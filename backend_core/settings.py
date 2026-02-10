@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'landing_page.apps.LandingPageConfig',
     'rest_framework',
     'corsheaders',
+    'ckeditor',
 ]
 
 MIDDLEWARE = [
@@ -132,3 +133,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Add a reusable site name for display in admin or APIs
+SITE_NAME = "Google Developer's Group, NEHU"

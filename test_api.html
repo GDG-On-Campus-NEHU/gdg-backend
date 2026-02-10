@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Test - All Endpoints</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #1976d2;
+            border-bottom: 2px solid #1976d2;
+            padding-bottom: 10px;
+        }
+        .card {
+            border: 1px solid #e0e0e0;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            background: #fafafa;
+        }
+        .card h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .meta {
+            color: #666;
+            font-size: 0.9rem;
+            margin: 5px 0;
+        }
+        .tag {
+            display: inline-block;
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            margin: 2px;
+        }
+        .skill {
+            display: inline-block;
+            background: #f0f0f0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            margin: 2px;
+        }
+        .social-links a {
+            margin-right: 10px;
+            color: #1976d2;
+            text-decoration: none;
+        }
+        .social-links a:hover {
+            text-decoration: underline;
+        }
+        img {
+            max-width: 200px;
+            height: auto;
+            border-radius: 4px;
+        }
+        button {
+            background: #1976d2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #1565c0;
+        }
+        .loading {
+            text-align: center;
+            color: #666;
+            padding: 20px;
+        }
+        .error {
+            color: #d32f2f;
+            padding: 10px;
+            background: #ffebee;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 API Test Dashboard - All Endpoints</h1>
+    <p style="text-align: center; color: #666;">
+        Testing connection to: <strong>http://127.0.0.1:8000/api/</strong>
+    </p>
+
+    <div style="text-align: center; margin: 20px 0;">
+        <button onclick="loadAll()">Load All Data</button>
+        <button onclick="clearAll()">Clear All</button>
+    </div>
+
+    <!-- Blogs Section -->
+    <div class="section">
+        <h2>📝 Blog Posts</h2>
+        <button onclick="loadBlogs()">Load Blogs</button>
+        <div id="blogs"></div>
+    </div>
+
+    <!-- Projects Section -->
+    <div class="section">
+        <h2>🚀 Projects</h2>
+        <button onclick="loadProjects()">Load Projects</button>
+        <div id="projects"></div>
+    </div>
+
+    <!-- Roadmaps Section -->
+    <div class="section">
+        <h2>🗺️ Roadmaps</h2>
+        <button onclick="loadRoadmaps()">Load Roadmaps</button>
+        <div id="roadmaps"></div>
+    </div>
+
+    <!-- Events Section -->
+    <div class="section">
+        <h2>📅 Events</h2>
+        <button onclick="loadEvents()">Load Events</button>
+        <div id="events"></div>
+    </div>
+
+    <!-- Team Section -->
+    <div class="section">
+        <h2>👥 Team Members</h2>
+        <button onclick="loadTeam()">Load Team</button>
+        <div id="team"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://127.0.0.1:8000/api';
+
+        async function loadBlogs() {
+            const container = document.getElementById('blogs');
+            container.innerHTML = '<p class="loading">Loading blogs...</p>';
+
+            try {
+                const response = await fetch(`${API_BASE}/blog/`);
+                const blogs = await response.json();
+
+                if (blogs.length === 0) {
+                    container.innerHTML = '<p>No blogs found. Add some via Django admin!</p>';
+                    return;
+                }
+
+                container.innerHTML = blogs.map(blog => `
+                    <div class="card">
+                        <h3>${blog.title}</h3>
+                        ${blog.image ? `<img src="${blog.image}" alt="${blog.title}">` : ''}
+                        <p>${blog.summary}</p>
+                        <div class="meta">
+                            By ${blog.author_name} • ${new Date(blog.published_date).toLocaleDateString()}
+                        </div>
+                        <div>
+                            ${blog.tags.map(tag => `<span class="tag">${tag.name}</span>`).join('')}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                container.innerHTML = `<p class="error">Error loading blogs: ${error.message}</p>`;
+            }
+        }
+
+        async function loadProjects() {
+            const container = document.getElementById('projects');
+            container.innerHTML = '<p class="loading">Loading projects...</p>';
+
+            try {
+                const response = await fetch(`${API_BASE}/projects/`);
+                const projects = await response.json();
+
+                if (projects.length === 0) {
+                    container.innerHTML = '<p>No projects found. Add some via Django admin!</p>';
+                    return;
+                }
+
+                container.innerHTML = projects.map(project => `
+                    <div class="card">
+                        <h3>${project.title}</h3>
+                        ${project.image ? `<img src="${project.image}" alt="${project.title}">` : ''}
+                        <p>${project.description}</p>
+                        <div class="meta">
+                            By ${project.author_name} • ${new Date(project.published_date).toLocaleDateString()}
+                        </div>
+                        <div>
+                            ${project.tags.map(tag => `<span class="tag">${tag.name}</span>`).join('')}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                container.innerHTML = `<p class="error">Error loading projects: ${error.message}</p>`;
+            }
+        }
+
+        async function loadRoadmaps() {
+            const container = document.getElementById('roadmaps');
+            container.innerHTML = '<p class="loading">Loading roadmaps...</p>';
+
+            try {
+                const response = await fetch(`${API_BASE}/roadmaps/`);
+                const roadmaps = await response.json();
+
+                if (roadmaps.length === 0) {
+                    container.innerHTML = '<p>No roadmaps found. Add some via Django admin!</p>';
+                    return;
+                }
+
+                container.innerHTML = roadmaps.map(roadmap => `
+                    <div class="card">
+                        <h3>${roadmap.icon_name} ${roadmap.title}</h3>
+                        <p>${roadmap.description}</p>
+                        <div class="meta">
+                            By ${roadmap.author_name} • ${new Date(roadmap.published_date).toLocaleDateString()}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                container.innerHTML = `<p class="error">Error loading roadmaps: ${error.message}</p>`;
+            }
+        }
+
+        async function loadEvents() {
+            const container = document.getElementById('events');
+            container.innerHTML = '<p class="loading">Loading events...</p>';
+
+            try {
+                const response = await fetch(`${API_BASE}/events/`);
+                const events = await response.json();
+
+                if (events.length === 0) {
+                    container.innerHTML = '<p>No events found. Add some via Django admin!</p>';
+                    return;
+                }
+
+                container.innerHTML = events.map(event => `
+                    <div class="card">
+                        <h3>${event.title}</h3>
+                        ${event.image ? `<img src="${event.image}" alt="${event.title}">` : ''}
+                        <p>${event.summary}</p>
+                        <div class="meta">
+                            📅 ${new Date(event.event_date).toLocaleDateString()} at ${new Date(event.event_date).toLocaleTimeString()}
+                        </div>
+                        <div class="meta">
+                            Organized by ${event.author_name}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                container.innerHTML = `<p class="error">Error loading events: ${error.message}</p>`;
+            }
+        }
+
+        async function loadTeam() {
+            const container = document.getElementById('team');
+            container.innerHTML = '<p class="loading">Loading team...</p>';
+
+            try {
+                const response = await fetch(`${API_BASE}/team/`);
+                const team = await response.json();
+
+                if (team.length === 0) {
+                    container.innerHTML = '<p>No team members found. Add some via Django admin!</p>';
+                    return;
+                }
+
+                container.innerHTML = team.map(member => `
+                    <div class="card">
+                        ${member.photo ? `<img src="${member.photo}" alt="${member.name}" style="border-radius: 50%; width: 100px; height: 100px; object-fit: cover;">` : ''}
+                        <h3>${member.name}</h3>
+                        <p><strong>${member.role}</strong></p>
+                        ${member.bio ? `<p>${member.bio}</p>` : ''}
+
+                        ${member.skills_list.length > 0 ? `
+                            <div style="margin: 10px 0;">
+                                <strong>Skills:</strong><br>
+                                ${member.skills_list.map(skill => `<span class="skill">${skill}</span>`).join('')}
+                            </div>
+                        ` : ''}
+
+                        <div class="social-links">
+                            ${member.github_url ? `<a href="${member.github_url}" target="_blank">🔗 GitHub</a>` : ''}
+                            ${member.linkedin_url ? `<a href="${member.linkedin_url}" target="_blank">🔗 LinkedIn</a>` : ''}
+                            ${member.instagram_url ? `<a href="${member.instagram_url}" target="_blank">🔗 Instagram</a>` : ''}
+                            ${member.twitter_url ? `<a href="${member.twitter_url}" target="_blank">🔗 Twitter</a>` : ''}
+                            ${member.website_url ? `<a href="${member.website_url}" target="_blank">🔗 Website</a>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                container.innerHTML = `<p class="error">Error loading team: ${error.message}</p>`;
+            }
+        }
+
+        function loadAll() {
+            loadBlogs();
+            loadProjects();
+            loadRoadmaps();
+            loadEvents();
+            loadTeam();
+        }
+
+        function clearAll() {
+            document.getElementById('blogs').innerHTML = '';
+            document.getElementById('projects').innerHTML = '';
+            document.getElementById('roadmaps').innerHTML = '';
+            document.getElementById('events').innerHTML = '';
+            document.getElementById('team').innerHTML = '';
+        }
+
+        // Auto-load on page load
+        window.addEventListener('load', loadAll);
+    </script>
+</body>
+</html>
