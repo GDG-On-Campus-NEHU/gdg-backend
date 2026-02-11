@@ -20,7 +20,7 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Project
-        fields = ['id', 'title', 'description', 'content', 'image', 'tags', 'tag_ids', 'author_name', 'published_date']
+        fields = ['id', 'title', 'description', 'content', 'image_url', 'tags', 'tag_ids', 'author_name', 'published_date']
 
     def create(self, validated_data):
         # Handle many-to-many tags
@@ -52,7 +52,7 @@ class BlogPostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BlogPost
-        fields = ['id', 'title', 'summary', 'content', 'image', 'tags', 'tag_ids', 'author_name', 'published_date']
+        fields = ['id', 'title', 'summary', 'content', 'image_url', 'tags', 'tag_ids', 'author_name', 'published_date']
 
     def create(self, validated_data):
         # Handle many-to-many tags
@@ -76,7 +76,7 @@ class TeamMemberSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TeamMember
-        fields = ['id', 'name', 'role', 'photo', 'bio', 'skills', 'skills_list',
+        fields = ['id', 'name', 'role', 'photo_url', 'bio', 'skills', 'skills_list',
                   'position_rank', 'github_url', 'linkedin_url', 'instagram_url',
                   'twitter_url', 'website_url']
 
@@ -94,4 +94,5 @@ class RoadmapSerializer(serializers.ModelSerializer):
 class EventSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
-        fields = ['id', 'title', 'summary', 'content', 'image', 'author_name', 'event_date']
+        fields = ['id', 'title', 'summary', 'content', 'image_url', 'author_name', 'event_date']
+

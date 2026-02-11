@@ -22,8 +22,8 @@ class Project(models.Model):
     description = models.TextField()
     # Rich text content for the detail page
     content = RichTextField(blank=True)
-    # Optional featured image
-    image = models.ImageField(upload_to='project_images/', blank=True, null=True)
+    # External image URL (e.g., Imgur, Cloudinary) - saves server storage
+    image_url = models.URLField(blank=True, max_length=500, help_text="URL to externally hosted image (e.g., Imgur)")
     # Optional tags for filtering
     tags = models.ManyToManyField(Tag, blank=True)
     # Optional author attribution
@@ -42,8 +42,8 @@ class BlogPost(models.Model):
     summary = models.TextField(help_text="A short summary for the landing page card.")
     # Rich text content for the detail page
     content = RichTextField(blank=True)
-    # Optional featured image
-    image = models.ImageField(upload_to='blog_images/', blank=True, null=True)
+    # External image URL (e.g., Imgur, Cloudinary) - saves server storage
+    image_url = models.URLField(blank=True, max_length=500, help_text="URL to externally hosted image (e.g., Imgur)")
     # Optional tags for filtering
     tags = models.ManyToManyField(Tag, blank=True)
     # Optional author attribution
@@ -60,8 +60,8 @@ class TeamMember(models.Model):
     name = models.CharField(max_length=100)
     # Role/title for the team section
     role = models.CharField(max_length=100)
-    # Profile photo
-    photo = models.ImageField(upload_to='team_photos/')
+    # External photo URL (e.g., Imgur, Cloudinary) - saves server storage
+    photo_url = models.URLField(max_length=500, help_text="URL to externally hosted photo (e.g., Imgur)")
     # Short bio shown on profile/detail view
     bio = models.TextField(blank=True, help_text="Short bio about the team member")
     # Comma-separated skills list (converted to array in serializer)
@@ -105,8 +105,8 @@ class Event(models.Model):
     summary = models.TextField()
     # Rich text content for details page
     content = RichTextField(blank=True)
-    # Optional event image
-    image = models.ImageField(upload_to='event_images/', blank=True, null=True)
+    # External image URL (e.g., Imgur, Cloudinary) - saves server storage
+    image_url = models.URLField(blank=True, max_length=500, help_text="URL to externally hosted image (e.g., Imgur)")
     # Optional organizer or author
     author_name = models.CharField(max_length=100, blank=True)
     # Event date/time
@@ -114,3 +114,4 @@ class Event(models.Model):
 
     def __str__(self):
         return self.title
+
