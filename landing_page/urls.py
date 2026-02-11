@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import TagViewSet, ProjectViewSet, BlogPostViewSet, TeamMemberViewSet, RoadmapViewSet, EventViewSet
+from .views import TagViewSet, ProjectViewSet, BlogPostViewSet, TeamMemberViewSet, RoadmapViewSet, EventViewSet, global_search
 
 router = DefaultRouter()
 router.register(r'tags', TagViewSet)
@@ -12,4 +12,6 @@ router.register(r'events', EventViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
+    # Global search endpoint
+    path('search/', global_search, name='global-search'),
 ]
