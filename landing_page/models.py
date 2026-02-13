@@ -157,9 +157,31 @@ class Event(models.Model):
     mode = models.CharField(max_length=10, choices=MODE_CHOICES, default=MODE_PHYSICAL)
     location_address = models.CharField(max_length=255, blank=True)
     meeting_link = models.URLField(blank=True, max_length=500)
-    tech_tags = models.JSONField(default=list, blank=True)
-    gallery_images = models.JSONField(default=list, blank=True)
-    resources = models.JSONField(default=list, blank=True)
 
     def __str__(self):
         return self.title
+
+
+class EventTechTag(models.Model):
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='tech_tag_items')
+    name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.name
+
+
+class EventGalleryImage(models.Model):
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='gallery_image_items')
+    image_url = models.URLField(max_length=500)
+
+    def __str__(self):
+        return self.image_url
+
+
+class EventResource(models.Model):
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='resource_items')
+    label = models.CharField(max_length=100)
+    url = models.URLField(max_length=500)
+
+    def __str__(self):
+        return self.label
