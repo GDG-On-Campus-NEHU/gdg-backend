@@ -133,13 +133,14 @@ class EventSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'summary', 'content', 'image_url', 'tags', 'tag_ids', 'author_name', 'event_date',
             'requires_registration', 'registration_link', 'mode', 'location_address', 'meeting_link',
-            'tech_tags', 'speakers', 'gallery_images'
+            'tech_tags', 'speakers', 'gallery_images', 'resources'
         ]
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
         data['tech_tags'] = data.get('tech_tags') or []
         data['gallery_images'] = data.get('gallery_images') or []
+        data['resources'] = data.get('resources') or []
         return data
 
 
