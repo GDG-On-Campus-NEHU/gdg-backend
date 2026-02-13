@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from django.utils.text import slugify
 
 try:
     from ckeditor.fields import RichTextField
@@ -10,6 +11,19 @@ except ImportError:  # fallback for environments without CKEditor
 # Model for reusable tags (e.g., "Robotics", "AI/ML")
 class Tag(models.Model):
     name = models.CharField(max_length=50, unique=True)
+    slug = models.SlugField(max_length=60, unique=True, blank=True, null=True)
+    color = models.CharField(max_length=7, default="#7da6ff")
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base_slug = slugify(self.name) or 'tag'
+            candidate = base_slug
+            suffix = 1
+            while Tag.objects.exclude(pk=self.pk).filter(slug=candidate).exists():
+                candidate = f"{base_slug}-{suffix}"
+                suffix += 1
+            self.slug = candidate
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
@@ -61,11 +75,13 @@ class TeamMember(models.Model):
     # Role/title for the team section
     role = models.CharField(max_length=100)
     # External photo URL (e.g., Imgur, Cloudinary) - saves server storage
-    photo_url = models.URLField(max_length=500, help_text="URL to externally hosted photo (e.g., Imgur)")
+    photo_url = models.URLField(max_length=500, blank=True, default='', help_text="URL to externally hosted photo (e.g., Imgur)")
     # Short bio shown on profile/detail view
     bio = models.TextField(blank=True, help_text="Short bio about the team member")
     # Comma-separated skills list (converted to array in serializer)
     skills = models.TextField(blank=True, help_text="Comma-separated skills (e.g., 'Python, Django, React')")
+    # Optional tags for filtering/search pages
+    tags = models.ManyToManyField(Tag, blank=True)
     # Sorting rank for display order
     position_rank = models.PositiveIntegerField(default=99,
                                                 help_text="Lower number = higher seniority (e.g., 1 for President)")
@@ -89,6 +105,8 @@ class Roadmap(models.Model):
     description = models.TextField()
     # Rich text content for the detail page
     content = RichTextField(blank=True)
+    # Optional tags for filtering
+    tags = models.ManyToManyField(Tag, blank=True)
     # Optional author attribution
     author_name = models.CharField(max_length=100, blank=True)
     # Publish timestamp used for ordering
@@ -107,6 +125,8 @@ class Event(models.Model):
     content = RichTextField(blank=True)
     # External image URL (e.g., Imgur, Cloudinary) - saves server storage
     image_url = models.URLField(blank=True, max_length=500, help_text="URL to externally hosted image (e.g., Imgur)")
+    # Optional tags for filtering
+    tags = models.ManyToManyField(Tag, blank=True)
     # Optional organizer or author
     author_name = models.CharField(max_length=100, blank=True)
     # Event date/time
@@ -114,4 +134,3 @@ class Event(models.Model):
 
     def __str__(self):
         return self.title
-

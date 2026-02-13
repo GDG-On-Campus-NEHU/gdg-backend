@@ -1,6 +1,8 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
-from .models import Tag, BlogPost, Project, Event
+
+from .models import Tag, BlogPost, Project, Event, Roadmap, TeamMember
+
 
 class BlogPostApiTests(TestCase):
     def setUp(self):
@@ -29,6 +31,7 @@ class BlogPostApiTests(TestCase):
         response = self.client.get('/api/blog/')
         self.assertEqual(response.status_code, 200)
         self.assertIn('content', response.data[0])
+
 
 class ProjectEventApiTests(TestCase):
     def setUp(self):
@@ -61,3 +64,42 @@ class ProjectEventApiTests(TestCase):
         event = Event.objects.first()
         self.assertEqual(event.author_name, 'Events Team')
         self.assertEqual(event.content, '<p>Details</p>')
+
+
+class TagAndItemsApiTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.tag = Tag.objects.create(name='Raspberry Pi')
+
+        blog = BlogPost.objects.create(title='Intro to ROS', summary='ROS basics', content='x')
+        blog.tags.add(self.tag)
+
+        project = Project.objects.create(title='Robot Arm', description='Build arm', content='x')
+        project.tags.add(self.tag)
+
+        roadmap = Roadmap.objects.create(icon_name='🤖', title='Robotics Path', description='path', content='x')
+        roadmap.tags.add(self.tag)
+
+        event = Event.objects.create(title='Pi Workshop', summary='Hands-on', content='x')
+        event.tags.add(self.tag)
+
+        team = TeamMember.objects.create(name='Sam', role='Lead', bio='Robotics mentor')
+        team.tags.add(self.tag)
+
+    def test_tags_list_with_counts(self):
+        response = self.client.get('/api/tags/?include_counts=true&type=all')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['tags'][0]['slug'], 'raspberry-pi')
+        self.assertEqual(response.data['tags'][0]['count'], 5)
+
+    def test_items_filter_by_tag_slug(self):
+        response = self.client.get('/api/items/?tag=raspberry-pi&type=all')
+        self.assertEqual(response.status_code, 200)
+        self.assertGreaterEqual(response.data['pagination']['total'], 5)
+        self.assertTrue(all(item['type'] in {'blogs', 'projects', 'events', 'roadmaps', 'team'} for item in response.data['items']))
+
+    def test_tag_detail_returns_metadata_and_items(self):
+        response = self.client.get('/api/tags/raspberry-pi/?type=projects&page=1&per_page=20&sort=recent')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['tag']['name'], 'Raspberry Pi')
+        self.assertEqual(response.data['pagination']['total'], 1)
