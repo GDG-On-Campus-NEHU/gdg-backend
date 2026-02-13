@@ -159,6 +159,7 @@ class Event(models.Model):
     meeting_link = models.URLField(blank=True, max_length=500)
     tech_tags = models.JSONField(default=list, blank=True)
     gallery_images = models.JSONField(default=list, blank=True)
+    resources = models.JSONField(default=list, blank=True)
 
     def __str__(self):
         return self.title
