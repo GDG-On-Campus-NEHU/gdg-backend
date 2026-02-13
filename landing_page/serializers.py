@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Tag, Project, BlogPost, TeamMember, Roadmap, Event
+from .models import Tag, Project, BlogPost, TeamMember, Roadmap, Event, Speaker
 
 
 class BasicTagSerializer(serializers.ModelSerializer):
@@ -111,8 +111,15 @@ class RoadmapSerializer(serializers.ModelSerializer):
         fields = ['id', 'icon_name', 'title', 'description', 'content', 'tags', 'tag_ids', 'author_name', 'published_date']
 
 
+class SpeakerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Speaker
+        fields = ['name', 'profile_image', 'bio', 'social_link']
+
+
 class EventSerializer(serializers.ModelSerializer):
     tags = BasicTagSerializer(many=True, read_only=True)
+    speakers = SpeakerSerializer(many=True, read_only=True)
     tag_ids = serializers.PrimaryKeyRelatedField(
         many=True,
         queryset=Tag.objects.all(),
@@ -123,7 +130,17 @@ class EventSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Event
-        fields = ['id', 'title', 'summary', 'content', 'image_url', 'tags', 'tag_ids', 'author_name', 'event_date']
+        fields = [
+            'id', 'title', 'summary', 'content', 'image_url', 'tags', 'tag_ids', 'author_name', 'event_date',
+            'requires_registration', 'registration_link', 'mode', 'location_address', 'meeting_link',
+            'tech_tags', 'speakers', 'gallery_images'
+        ]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['tech_tags'] = data.get('tech_tags') or []
+        data['gallery_images'] = data.get('gallery_images') or []
+        return data
 
 
 class UnifiedItemSerializer(serializers.Serializer):

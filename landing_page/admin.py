@@ -6,7 +6,7 @@ try:
 except ImportError:  # fallback for environments without CKEditor
     CKEditorWidget = forms.Textarea
 
-from .models import Tag, Project, BlogPost, TeamMember, Roadmap, Event
+from .models import Tag, Project, BlogPost, TeamMember, Roadmap, Event, Speaker
 
 # Register your models here so they appear in the admin panel.
 @admin.register(Tag)
@@ -58,6 +58,12 @@ class RoadmapAdmin(admin.ModelAdmin):
     search_fields = ('title', 'description', 'author_name')
     list_filter = ('published_date', 'tags')
 
+
+@admin.register(Speaker)
+class SpeakerAdmin(admin.ModelAdmin):
+    list_display = ('name', 'social_link')
+    search_fields = ('name', 'bio', 'social_link')
+
 class EventAdminForm(forms.ModelForm):
     content = forms.CharField(widget=CKEditorWidget(), required=False)
 
@@ -68,9 +74,10 @@ class EventAdminForm(forms.ModelForm):
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
     form = EventAdminForm
-    list_display = ('title', 'author_name', 'event_date')
-    search_fields = ('title', 'summary', 'author_name')
-    list_filter = ('event_date', 'tags')
+    list_display = ('title', 'author_name', 'event_date', 'mode', 'requires_registration')
+    search_fields = ('title', 'summary', 'author_name', 'location_address', 'meeting_link', 'registration_link')
+    list_filter = ('event_date', 'mode', 'requires_registration', 'tags')
+    filter_horizontal = ('tags', 'speakers')
 
 @admin.register(TeamMember)
 class TeamMemberAdmin(admin.ModelAdmin):
