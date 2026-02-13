@@ -1,5 +1,14 @@
 from rest_framework import serializers
-from .models import Tag, Project, BlogPost, TeamMember, Roadmap, Event, Speaker
+from .models import (
+    Tag,
+    Project,
+    BlogPost,
+    TeamMember,
+    Roadmap,
+    Event,
+    Speaker,
+    EventResource,
+)
 
 
 class BasicTagSerializer(serializers.ModelSerializer):
@@ -117,6 +126,12 @@ class SpeakerSerializer(serializers.ModelSerializer):
         fields = ['name', 'profile_image', 'bio', 'social_link']
 
 
+class EventResourceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EventResource
+        fields = ['label', 'url']
+
+
 class EventSerializer(serializers.ModelSerializer):
     tags = BasicTagSerializer(many=True, read_only=True)
     speakers = SpeakerSerializer(many=True, read_only=True)
@@ -127,6 +142,14 @@ class EventSerializer(serializers.ModelSerializer):
         source='tags',
         required=False,
     )
+    tech_tags = serializers.SlugRelatedField(
+        many=True,
+        read_only=True,
+        slug_field='name',
+        source='tech_tag_items',
+    )
+    gallery_images = serializers.SerializerMethodField()
+    resources = EventResourceSerializer(many=True, read_only=True, source='resource_items')
 
     class Meta:
         model = Event
@@ -136,12 +159,8 @@ class EventSerializer(serializers.ModelSerializer):
             'tech_tags', 'speakers', 'gallery_images', 'resources'
         ]
 
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        data['tech_tags'] = data.get('tech_tags') or []
-        data['gallery_images'] = data.get('gallery_images') or []
-        data['resources'] = data.get('resources') or []
-        return data
+    def get_gallery_images(self, obj):
+        return [image.image_url for image in obj.gallery_image_items.all()]
 
 
 class UnifiedItemSerializer(serializers.Serializer):
