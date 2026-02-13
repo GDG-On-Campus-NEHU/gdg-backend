@@ -1,5 +1,14 @@
 from rest_framework import serializers
-from .models import Tag, Project, BlogPost, TeamMember, Roadmap, Event
+from .models import (
+    Tag,
+    Project,
+    BlogPost,
+    TeamMember,
+    Roadmap,
+    Event,
+    Speaker,
+    EventResource,
+)
 
 
 class BasicTagSerializer(serializers.ModelSerializer):
@@ -111,8 +120,21 @@ class RoadmapSerializer(serializers.ModelSerializer):
         fields = ['id', 'icon_name', 'title', 'description', 'content', 'tags', 'tag_ids', 'author_name', 'published_date']
 
 
+class SpeakerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Speaker
+        fields = ['name', 'profile_image', 'bio', 'social_link']
+
+
+class EventResourceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EventResource
+        fields = ['label', 'url']
+
+
 class EventSerializer(serializers.ModelSerializer):
     tags = BasicTagSerializer(many=True, read_only=True)
+    speakers = SpeakerSerializer(many=True, read_only=True)
     tag_ids = serializers.PrimaryKeyRelatedField(
         many=True,
         queryset=Tag.objects.all(),
@@ -120,10 +142,25 @@ class EventSerializer(serializers.ModelSerializer):
         source='tags',
         required=False,
     )
+    tech_tags = serializers.SlugRelatedField(
+        many=True,
+        read_only=True,
+        slug_field='name',
+        source='tech_tag_items',
+    )
+    gallery_images = serializers.SerializerMethodField()
+    resources = EventResourceSerializer(many=True, read_only=True, source='resource_items')
 
     class Meta:
         model = Event
-        fields = ['id', 'title', 'summary', 'content', 'image_url', 'tags', 'tag_ids', 'author_name', 'event_date']
+        fields = [
+            'id', 'title', 'summary', 'content', 'image_url', 'tags', 'tag_ids', 'author_name', 'event_date',
+            'requires_registration', 'registration_link', 'mode', 'location_address', 'meeting_link',
+            'tech_tags', 'speakers', 'gallery_images', 'resources'
+        ]
+
+    def get_gallery_images(self, obj):
+        return [image.image_url for image in obj.gallery_image_items.all()]
 
 
 class UnifiedItemSerializer(serializers.Serializer):

@@ -115,8 +115,28 @@ class Roadmap(models.Model):
     def __str__(self):
         return self.title
 
+
+class Speaker(models.Model):
+    name = models.CharField(max_length=100)
+    profile_image = models.URLField(max_length=500, help_text="URL to externally hosted speaker photo")
+    bio = models.TextField()
+    social_link = models.URLField(blank=True, null=True, max_length=500)
+
+    def __str__(self):
+        return self.name
+
+
 # New model for Events
 class Event(models.Model):
+    MODE_PHYSICAL = 'physical'
+    MODE_VIRTUAL = 'virtual'
+    MODE_HYBRID = 'hybrid'
+    MODE_CHOICES = [
+        (MODE_PHYSICAL, 'Physical'),
+        (MODE_VIRTUAL, 'Virtual'),
+        (MODE_HYBRID, 'Hybrid'),
+    ]
+
     # Event title
     title = models.CharField(max_length=150)
     # Short summary for list cards
@@ -131,6 +151,37 @@ class Event(models.Model):
     author_name = models.CharField(max_length=100, blank=True)
     # Event date/time
     event_date = models.DateTimeField(default=timezone.now)
+    speakers = models.ManyToManyField(Speaker, blank=True, related_name='events')
+    requires_registration = models.BooleanField(default=True)
+    registration_link = models.URLField(blank=True, null=True, max_length=500)
+    mode = models.CharField(max_length=10, choices=MODE_CHOICES, default=MODE_PHYSICAL)
+    location_address = models.CharField(max_length=255, blank=True)
+    meeting_link = models.URLField(blank=True, max_length=500)
 
     def __str__(self):
         return self.title
+
+
+class EventTechTag(models.Model):
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='tech_tag_items')
+    name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.name
+
+
+class EventGalleryImage(models.Model):
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='gallery_image_items')
+    image_url = models.URLField(max_length=500)
+
+    def __str__(self):
+        return self.image_url
+
+
+class EventResource(models.Model):
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='resource_items')
+    label = models.CharField(max_length=100)
+    url = models.URLField(max_length=500)
+
+    def __str__(self):
+        return self.label
