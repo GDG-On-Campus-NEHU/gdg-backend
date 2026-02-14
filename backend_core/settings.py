@@ -30,13 +30,8 @@ INSTALLED_APPS = [
 
     'rest_framework',
     'corsheaders',
+    'django_ckeditor_5',
 ]
-
-try:
-    import django_ckeditor_5  # noqa: F401
-    INSTALLED_APPS.append('django_ckeditor_5')
-except ImportError:
-    pass
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -133,48 +128,26 @@ SITE_NAME = "Google Developer's Group, NEHU"
 
 
 CKEDITOR_5_CONFIGS = {
-    'extends': {
-        'toolbar': {
-            'items': [
-                'heading', '|',
-                'bold', 'italic', 'underline', 'link', '|',
-                'alignment', '|',
-                'bulletedList', 'numberedList', 'blockQuote', '|',
-                'codeBlock', '|',
-                'insertImage', 'mediaEmbed', '|',
-                'undo', 'redo',
-            ],
-            'shouldNotGroupWhenFull': True,
-        },
+    'default': {
+        'toolbar': [
+            'heading', '|',
+            'bold', 'italic', 'link', 'bulletedList', 'numberedList', 'blockQuote', 'codeBlock', '|',
+            'outdent', 'indent', '|',
+            'imageUpload', 'mediaEmbed', '|',
+            'alignment', 'undo', 'redo'
+        ],
         'image': {
-            'toolbar': [
-                'imageTextAlternative', '|',
-                'imageStyle:inline', 'imageStyle:block', 'imageStyle:side', '|',
-                'resizeImage', '|',
-                'imageStyle:alignLeft', 'imageStyle:alignCenter', 'imageStyle:alignRight',
-            ],
-            'styles': [
-                'inline', 'block', 'side',
-                'alignLeft', 'alignCenter', 'alignRight',
-            ],
-            'resizeUnit': '%',
-            'resizeOptions': [
-                {'name': 'resizeImage:original', 'value': None, 'label': 'Original'},
-                {'name': 'resizeImage:50', 'value': '50', 'label': '50%'},
-                {'name': 'resizeImage:75', 'value': '75', 'label': '75%'},
-            ],
-        },
-        'mediaEmbed': {
-            'previewsInData': True,
+            'toolbar': ['imageTextAlternative', 'imageStyle:inline', 'imageStyle:block', 'imageStyle:side']
         },
         'codeBlock': {
             'languages': [
                 {'language': 'plaintext', 'label': 'Plain text'},
                 {'language': 'python', 'label': 'Python'},
                 {'language': 'javascript', 'label': 'JavaScript'},
-                {'language': 'bash', 'label': 'Bash'},
+                {'language': 'html', 'label': 'HTML'},
+                {'language': 'css', 'label': 'CSS'}
             ]
-        },
+        }
     }
 }
 

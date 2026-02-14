@@ -35,7 +35,7 @@ class Project(models.Model):
     # Short description used in cards and previews
     description = models.TextField()
     # Rich text content for the detail page
-    content = CKEditor5Field(blank=True)
+    content = CKEditor5Field('Text', config_name='default', blank=True)
     # External image URL (e.g., Imgur, Cloudinary) - saves server storage
     image_url = models.URLField(blank=True, max_length=500, help_text="URL to externally hosted image (e.g., Imgur)")
     # Optional tags for filtering
@@ -55,7 +55,7 @@ class BlogPost(models.Model):
     # Short summary used in preview cards
     summary = models.TextField(help_text="A short summary for the landing page card.")
     # Rich text content for the detail page
-    content = CKEditor5Field(blank=True)
+    content = CKEditor5Field('Text', config_name='default', blank=True)
     # External image URL (e.g., Imgur, Cloudinary) - saves server storage
     image_url = models.URLField(blank=True, max_length=500, help_text="URL to externally hosted image (e.g., Imgur)")
     # Optional tags for filtering
@@ -104,7 +104,7 @@ class Roadmap(models.Model):
     # Short description shown in cards
     description = models.TextField()
     # Rich text content for the detail page
-    content = CKEditor5Field(blank=True)
+    content = CKEditor5Field('Text', config_name='default', blank=True)
     # Optional tags for filtering
     tags = models.ManyToManyField(Tag, blank=True)
     # Optional author attribution
@@ -142,7 +142,7 @@ class Event(models.Model):
     # Short summary for list cards
     summary = models.TextField()
     # Rich text content for details page
-    content = CKEditor5Field(blank=True)
+    content = CKEditor5Field('Text', config_name='default', blank=True)
     # External image URL (e.g., Imgur, Cloudinary) - saves server storage
     image_url = models.URLField(blank=True, max_length=500, help_text="URL to externally hosted image (e.g., Imgur)")
     # Optional tags for filtering

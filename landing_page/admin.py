@@ -10,7 +10,7 @@ except ImportError:  # fallback for environments without CKEditor 5
 
 def rich_text_widget():
     try:
-        return CKEditor5Widget(config_name='extends')
+        return CKEditor5Widget(config_name='default')
     except TypeError:
         return CKEditor5Widget()
 
