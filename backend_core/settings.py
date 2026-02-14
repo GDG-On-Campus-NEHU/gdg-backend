@@ -109,7 +109,7 @@ CSRF_TRUSTED_ORIGINS = [
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Kolkata'
 USE_I18N = True
 USE_TZ = True
 
@@ -132,21 +132,69 @@ CKEDITOR_5_CONFIGS = {
     'default': {
         'toolbar': [
             'heading', '|',
-            'bold', 'italic', 'link', 'bulletedList', 'numberedList', 'blockQuote', 'codeBlock', '|',
+            'bold', 'italic', 'underline', 'strikethrough', 'link', '|',
+            'bulletedList', 'numberedList', 'todoList', '|',
             'outdent', 'indent', '|',
-            'imageUpload', 'mediaEmbed', '|',
-            'alignment', 'undo', 'redo'
+            'imageUpload', 'blockQuote', 'insertTable', 'mediaEmbed', 'codeBlock', 'htmlEmbed', '|',
+            'fontSize', 'fontFamily', 'fontColor', 'fontBackgroundColor', 'highlight', '|',
+            'alignment', '|',
+            'undo', 'redo', 'sourceEditing'
         ],
         'image': {
-            'toolbar': ['imageTextAlternative', 'imageStyle:inline', 'imageStyle:block', 'imageStyle:side']
+            'toolbar': [
+                'imageTextAlternative',
+                'imageStyle:inline',
+                'imageStyle:block',
+                'imageStyle:side',
+                'linkImage'
+            ]
+        },
+        'table': {
+            'contentToolbar': [
+                'tableColumn', 'tableRow', 'mergeTableCells',
+                'tableProperties', 'tableCellProperties'
+            ]
+        },
+        'heading': {
+            'options': [
+                { 'model': 'paragraph', 'title': 'Paragraph', 'class': 'ck-heading_paragraph' },
+                { 'model': 'heading1', 'view': 'h1', 'title': 'Heading 1', 'class': 'ck-heading_heading1' },
+                { 'model': 'heading2', 'view': 'h2', 'title': 'Heading 2', 'class': 'ck-heading_heading2' },
+                { 'model': 'heading3', 'view': 'h3', 'title': 'Heading 3', 'class': 'ck-heading_heading3' }
+            ]
         },
         'codeBlock': {
             'languages': [
-                {'language': 'plaintext', 'label': 'Plain text'},
+                # Low Level / Systems
+                {'language': 'c', 'label': 'C'},
+                {'language': 'cpp', 'label': 'C++'},
+                {'language': 'csharp', 'label': 'C#'},
+                {'language': 'rust', 'label': 'Rust'},
+                {'language': 'go', 'label': 'Go'},
+
+                # Web / Scripting
                 {'language': 'python', 'label': 'Python'},
                 {'language': 'javascript', 'label': 'JavaScript'},
+                {'language': 'typescript', 'label': 'TypeScript'},
+                {'language': 'php', 'label': 'PHP'},
+                {'language': 'ruby', 'label': 'Ruby'},
+                {'language': 'java', 'label': 'Java'},
+
+                # Mobile (Google Context)
+                {'language': 'kotlin', 'label': 'Kotlin'},
+                {'language': 'dart', 'label': 'Dart/Flutter'},
+                {'language': 'swift', 'label': 'Swift'},
+
+                # Markup / Config
                 {'language': 'html', 'label': 'HTML'},
-                {'language': 'css', 'label': 'CSS'}
+                {'language': 'css', 'label': 'CSS'},
+                {'language': 'xml', 'label': 'XML'},
+                {'language': 'json', 'label': 'JSON'},
+                {'language': 'yaml', 'label': 'YAML'},
+                {'language': 'sql', 'label': 'SQL'},
+                {'language': 'bash', 'label': 'Bash/Shell'},
+                {'language': 'markdown', 'label': 'Markdown'},
+                {'language': 'plaintext', 'label': 'Plain Text'},
             ]
         }
     }
