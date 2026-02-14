@@ -1,14 +1,14 @@
 """
-Quick API Test Script
-Run this to verify all endpoints are working
+Quick API Test Script.
+Run this script directly to verify endpoints are working.
 """
-import requests
-import json
 
 BASE_URL = 'http://localhost:8000/api'
 
-def test_endpoint(endpoint, name):
-    """Test a single API endpoint"""
+
+def test_endpoint(endpoint: str, name: str) -> bool:
+    import requests
+    """Test a single API endpoint."""
     try:
         response = requests.get(f'{BASE_URL}{endpoint}', timeout=5)
         if response.status_code == 200:
@@ -18,17 +18,18 @@ def test_endpoint(endpoint, name):
                 # Show first item's keys
                 print(f'   Fields: {list(data[0].keys())}')
             return True
-        else:
-            print(f'❌ {name:25s} - Status: {response.status_code}')
-            return False
+
+        print(f'❌ {name:25s} - Status: {response.status_code}')
+        return False
     except requests.exceptions.ConnectionError:
         print(f'⚠️  {name:25s} - Server not responding')
         return False
-    except Exception as e:
-        print(f'❌ {name:25s} - Error: {str(e)[:50]}')
+    except Exception as exc:
+        print(f'❌ {name:25s} - Error: {str(exc)[:50]}')
         return False
 
-if __name__ == '__main__':
+
+def main() -> None:
     print('=' * 70)
     print('API ENDPOINT TEST')
     print('=' * 70)
@@ -55,3 +56,6 @@ if __name__ == '__main__':
         print(f'⚠️  {sum(results)}/{len(results)} endpoints working')
     print('=' * 70)
 
+
+if __name__ == '__main__':
+    main()
