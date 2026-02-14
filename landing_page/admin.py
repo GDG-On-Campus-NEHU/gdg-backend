@@ -2,9 +2,17 @@ from django.contrib import admin
 from django import forms
 
 try:
-    from ckeditor.widgets import CKEditorWidget
-except ImportError:  # fallback for environments without CKEditor
-    CKEditorWidget = forms.Textarea
+    from django_ckeditor_5.widgets import CKEditor5Widget
+except ImportError:  # fallback for environments without CKEditor 5
+    CKEditor5Widget = forms.Textarea
+
+
+
+def rich_text_widget():
+    try:
+        return CKEditor5Widget(config_name='default')
+    except TypeError:
+        return CKEditor5Widget()
 
 from .models import (
     Tag,
@@ -29,7 +37,7 @@ class TagAdmin(admin.ModelAdmin):
 
 
 class ProjectAdminForm(forms.ModelForm):
-    content = forms.CharField(widget=CKEditorWidget(), required=False)
+    content = forms.CharField(widget=rich_text_widget(), required=False)
 
     class Meta:
         model = Project
@@ -45,7 +53,7 @@ class ProjectAdmin(admin.ModelAdmin):
 
 
 class BlogPostAdminForm(forms.ModelForm):
-    content = forms.CharField(widget=CKEditorWidget(), required=False)
+    content = forms.CharField(widget=rich_text_widget(), required=False)
 
     class Meta:
         model = BlogPost
@@ -61,7 +69,7 @@ class BlogPostAdmin(admin.ModelAdmin):
 
 
 class RoadmapAdminForm(forms.ModelForm):
-    content = forms.CharField(widget=CKEditorWidget(), required=False)
+    content = forms.CharField(widget=rich_text_widget(), required=False)
 
     class Meta:
         model = Roadmap
@@ -83,7 +91,7 @@ class SpeakerAdmin(admin.ModelAdmin):
 
 
 class EventAdminForm(forms.ModelForm):
-    content = forms.CharField(widget=CKEditorWidget(), required=False)
+    content = forms.CharField(widget=rich_text_widget(), required=False)
 
     class Meta:
         model = Event
