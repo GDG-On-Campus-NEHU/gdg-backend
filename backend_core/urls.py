@@ -8,11 +8,9 @@ urlpatterns = [
     path('api/', include('landing_page.urls')),
 ]
 
-try:
-    import django_ckeditor_5  # noqa: F401
-    urlpatterns.append(path('ckeditor5/', include('django_ckeditor_5.urls')))
-except ImportError:
-    pass
+urlpatterns += [
+    path('ckeditor5/', include('django_ckeditor_5.urls')),
+]
 
 # Note: Media files (images) are now hosted externally (e.g., Imgur, Cloudinary)
 # to save server storage costs on free-tier deployments
