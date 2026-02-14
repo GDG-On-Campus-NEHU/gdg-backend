@@ -1,6 +1,7 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
 
+from .management.commands.normalize_richtext_html import normalize_html
 from .models import Tag, BlogPost, Project, Event, Roadmap, TeamMember
 
 
@@ -103,3 +104,20 @@ class TagAndItemsApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['tag']['name'], 'Raspberry Pi')
         self.assertEqual(response.data['pagination']['total'], 1)
+
+
+class RichTextNormalizationTests(TestCase):
+    def test_normalize_html_converts_legacy_patterns(self):
+        legacy = (
+            '<p style="text-align:center">Hello</p>'
+            '<figure class="image image_left"><img src="x.jpg"></figure>'
+            '<iframe src="https://www.youtube.com/embed/abc123"></iframe>'
+            'https://youtu.be/xyz789'
+        )
+
+        normalized = normalize_html(legacy)
+
+        self.assertIn('text-align: center', normalized)
+        self.assertIn('image-style-align-left', normalized)
+        self.assertIn('<oembed url="https://www.youtube.com/watch?v=abc123"></oembed>', normalized)
+        self.assertIn('https://www.youtube.com/watch?v=xyz789', normalized)

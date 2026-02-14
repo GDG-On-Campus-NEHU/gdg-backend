@@ -30,8 +30,13 @@ INSTALLED_APPS = [
 
     'rest_framework',
     'corsheaders',
-    'ckeditor',
 ]
+
+try:
+    import django_ckeditor_5  # noqa: F401
+    INSTALLED_APPS.append('django_ckeditor_5')
+except ImportError:
+    pass
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -126,6 +131,55 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Custom site info
 SITE_NAME = "Google Developer's Group, NEHU"
 
+
+CKEDITOR_5_CONFIGS = {
+    'extends': {
+        'toolbar': {
+            'items': [
+                'heading', '|',
+                'bold', 'italic', 'underline', 'link', '|',
+                'alignment', '|',
+                'bulletedList', 'numberedList', 'blockQuote', '|',
+                'codeBlock', '|',
+                'insertImage', 'mediaEmbed', '|',
+                'undo', 'redo',
+            ],
+            'shouldNotGroupWhenFull': True,
+        },
+        'image': {
+            'toolbar': [
+                'imageTextAlternative', '|',
+                'imageStyle:inline', 'imageStyle:block', 'imageStyle:side', '|',
+                'resizeImage', '|',
+                'imageStyle:alignLeft', 'imageStyle:alignCenter', 'imageStyle:alignRight',
+            ],
+            'styles': [
+                'inline', 'block', 'side',
+                'alignLeft', 'alignCenter', 'alignRight',
+            ],
+            'resizeUnit': '%',
+            'resizeOptions': [
+                {'name': 'resizeImage:original', 'value': None, 'label': 'Original'},
+                {'name': 'resizeImage:50', 'value': '50', 'label': '50%'},
+                {'name': 'resizeImage:75', 'value': '75', 'label': '75%'},
+            ],
+        },
+        'mediaEmbed': {
+            'previewsInData': True,
+        },
+        'codeBlock': {
+            'languages': [
+                {'language': 'plaintext', 'label': 'Plain text'},
+                {'language': 'python', 'label': 'Python'},
+                {'language': 'javascript', 'label': 'JavaScript'},
+                {'language': 'bash', 'label': 'Bash'},
+            ]
+        },
+    }
+}
+
+CKEDITOR_5_UPLOAD_PATH = 'uploads/'
+CKEDITOR_5_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
 
 # Django REST Framework – force JSON responses only
 REST_FRAMEWORK = {
