@@ -12,8 +12,11 @@ import dj_database_url
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY
-SECRET_KEY = 'django-insecure-g-a7up(22^5!lggdpuw#)pd9o6*xjvg2$p69578ht^dgx$uiv$'
-DEBUG = True
+SECRET_KEY = os.getenv(
+    'DJANGO_SECRET_KEY',
+    'unsafe-dev-secret-key'
+)
+DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() == 'true'
 
 ALLOWED_HOSTS = ['*']
 
@@ -67,7 +70,10 @@ WSGI_APPLICATION = 'backend_core.wsgi.application'
 
 DATABASES = {
     'default': dj_database_url.config(
-        default='postgresql://postgres.gppluwrmhuzhwvvyhnri:qeXU7FvGcDB6N2AA@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres',
+        default=os.getenv(
+            'DATABASE_URL',
+            f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
+        ),
     )
 }
 
@@ -100,7 +106,12 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
 CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://barbless-martine-unartificial.ngrok-free.dev"
+    origin.strip()
+    for origin in os.getenv(
+        'CSRF_TRUSTED_ORIGINS',
+        'http://127.0.0.1:8000,http://localhost:8000'
+    ).split(',')
+    if origin.strip()
 ]
 
 # ------------------------------------------------------------
