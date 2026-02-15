@@ -7,9 +7,13 @@ from pathlib import Path
 import os
 from corsheaders.defaults import default_headers
 import dj_database_url
+from dotenv import load_dotenv
+from pathlib import Path
 
 # Build paths
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
+
 
 # SECURITY
 SECRET_KEY = os.getenv(
@@ -71,7 +75,7 @@ WSGI_APPLICATION = 'backend_core.wsgi.application'
 DATABASES = {
     'default': dj_database_url.config(
         default=os.getenv(
-            'DATABASE_URL',
+            'DATABASE_URL'
             f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
         ),
     )
