@@ -17,10 +17,25 @@ This project is a Django REST API for **Google Developer's Group, NEHU** (GDG NE
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+copy .env.example .env  # Windows (or: cp .env.example .env on Linux/macOS)
+# edit .env with your secret key and database connection
 python manage.py migrate
 python manage.py createsuperuser  # Create admin account
 python manage.py runserver
 ```
+
+
+## 🔐 Environment Variables
+
+Sensitive configuration is now loaded from environment variables (including database connections).
+
+- `DJANGO_SECRET_KEY`: Django secret key
+- `DATABASE_URL`: full database connection string (recommended)
+- `DB_*`: fallback database fields when `DATABASE_URL` is not set
+- `REDIS_URL`: optional Redis cache connection string
+- `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `CORS_ALLOW_ALL_ORIGINS`
+
+Use `.env.example` as your template and keep actual `.env` values private.
 
 ## 📚 Complete API Reference
 
