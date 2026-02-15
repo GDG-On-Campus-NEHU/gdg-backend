@@ -17,10 +17,16 @@ This project is a Django REST API for **Google Developer's Group, NEHU** (GDG NE
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+
+# create environment file and set values
+copy .env.example .env
+
 python manage.py migrate
 python manage.py createsuperuser  # Create admin account
 python manage.py runserver
 ```
+
+Environment variables are configured in `.env.example` (e.g., `DJANGO_SECRET_KEY`, `DATABASE_URL`, `CSRF_TRUSTED_ORIGINS`).
 
 ## 📚 Complete API Reference
 
