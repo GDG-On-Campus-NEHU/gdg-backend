@@ -1,4 +1,5 @@
 from django.contrib import admin
+from unfold.admin import ModelAdmin
 from django import forms
 
 try:
@@ -30,7 +31,7 @@ from .models import (
 
 # Register your models here so they appear in the admin panel.
 @admin.register(Tag)
-class TagAdmin(admin.ModelAdmin):
+class TagAdmin(ModelAdmin):
     list_display = ('name', 'slug', 'color')
     search_fields = ('name', 'slug')
     prepopulated_fields = {'slug': ('name',)}
@@ -45,7 +46,7 @@ class ProjectAdminForm(forms.ModelForm):
 
 
 @admin.register(Project)
-class ProjectAdmin(admin.ModelAdmin):
+class ProjectAdmin(ModelAdmin):
     form = ProjectAdminForm
     list_display = ('title', 'author_name', 'published_date')
     search_fields = ('title', 'description', 'author_name')
@@ -61,7 +62,7 @@ class BlogPostAdminForm(forms.ModelForm):
 
 
 @admin.register(BlogPost)
-class BlogPostAdmin(admin.ModelAdmin):
+class BlogPostAdmin(ModelAdmin):
     form = BlogPostAdminForm
     list_display = ('title', 'author_name', 'published_date')
     search_fields = ('title', 'summary', 'author_name')
@@ -77,7 +78,7 @@ class RoadmapAdminForm(forms.ModelForm):
 
 
 @admin.register(Roadmap)
-class RoadmapAdmin(admin.ModelAdmin):
+class RoadmapAdmin(ModelAdmin):
     form = RoadmapAdminForm
     list_display = ('title', 'author_name', 'published_date')
     search_fields = ('title', 'description', 'author_name')
@@ -85,7 +86,7 @@ class RoadmapAdmin(admin.ModelAdmin):
 
 
 @admin.register(Speaker)
-class SpeakerAdmin(admin.ModelAdmin):
+class SpeakerAdmin(ModelAdmin):
     list_display = ('name', 'social_link')
     search_fields = ('name', 'bio', 'social_link')
 
@@ -114,7 +115,7 @@ class ResourceInline(admin.TabularInline):
 
 
 @admin.register(Event)
-class EventAdmin(admin.ModelAdmin):
+class EventAdmin(ModelAdmin):
     form = EventAdminForm
     list_display = ('title', 'author_name', 'event_date', 'mode', 'requires_registration')
     search_fields = ('title', 'summary', 'author_name', 'location_address', 'meeting_link', 'registration_link')
@@ -124,7 +125,7 @@ class EventAdmin(admin.ModelAdmin):
 
 
 @admin.register(TeamMember)
-class TeamMemberAdmin(admin.ModelAdmin):
+class TeamMemberAdmin(ModelAdmin):
     list_display = ('name', 'role', 'position_rank')
     search_fields = ('name', 'role', 'bio', 'skills')
     list_filter = ('position_rank', 'tags')
