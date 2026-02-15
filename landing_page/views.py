@@ -4,6 +4,7 @@ from django.utils.text import slugify
 from django.core.paginator import Paginator
 from rest_framework import viewsets
 from rest_framework.decorators import api_view
+from rest_framework.permissions import BasePermission, SAFE_METHODS
 from rest_framework.response import Response
 
 from .models import Tag, Project, BlogPost, TeamMember, Roadmap, Event
@@ -19,6 +20,13 @@ from .serializers import (
 
 VALID_TYPES = {'blogs', 'projects', 'events', 'roadmaps', 'team', 'all'}
 CACHE_TTL_SECONDS = 120
+
+
+class IsAdminUserOrReadOnly(BasePermission):
+    def has_permission(self, request, view):
+        if request.method in SAFE_METHODS:
+            return True
+        return bool(request.user and request.user.is_staff)
 
 
 def _parse_bool(value, default=False):
@@ -336,11 +344,13 @@ def global_search(request):
 class ProjectViewSet(viewsets.ModelViewSet):
     queryset = Project.objects.all().order_by('-published_date')
     serializer_class = ProjectSerializer
+    permission_classes = [IsAdminUserOrReadOnly]
 
 
 class BlogPostViewSet(viewsets.ModelViewSet):
     queryset = BlogPost.objects.all().order_by('-published_date')
     serializer_class = BlogPostSerializer
+    permission_classes = [IsAdminUserOrReadOnly]
 
 
 class TeamMemberViewSet(viewsets.ReadOnlyModelViewSet):
@@ -351,11 +361,13 @@ class TeamMemberViewSet(viewsets.ReadOnlyModelViewSet):
 class RoadmapViewSet(viewsets.ModelViewSet):
     queryset = Roadmap.objects.all().order_by('-published_date')
     serializer_class = RoadmapSerializer
+    permission_classes = [IsAdminUserOrReadOnly]
 
 
 class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all().order_by('-event_date')
     serializer_class = EventSerializer
+    permission_classes = [IsAdminUserOrReadOnly]
 
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
