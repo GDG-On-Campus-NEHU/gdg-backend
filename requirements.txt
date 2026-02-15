@@ -2,7 +2,6 @@ Django==5.2.6
 djangorestframework==3.16.1
 django-cors-headers==4.9.0
 django-ckeditor-5==0.2.18
-django-unfold
 Pillow==12.1.0
 sqlparse==0.5.5
 asgiref==3.11.1
