@@ -1,4 +1,5 @@
 from django.test import TestCase
+from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
 from .management.commands.normalize_richtext_html import normalize_html
@@ -9,8 +10,14 @@ class BlogPostApiTests(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.tag = Tag.objects.create(name='Robotics')
+        self.admin_user = get_user_model().objects.create_user(
+            username='admin-user',
+            password='secret123',
+            is_staff=True,
+        )
 
     def test_create_blog_post_with_rich_text(self):
+        self.client.force_authenticate(user=self.admin_user)
         payload = {
             'title': 'First Post',
             'summary': 'Short summary',
@@ -21,6 +28,15 @@ class BlogPostApiTests(TestCase):
         self.assertEqual(BlogPost.objects.count(), 1)
         blog = BlogPost.objects.first()
         self.assertEqual(blog.content, payload['content'])
+
+    def test_anonymous_blog_post_create_is_denied(self):
+        payload = {
+            'title': 'First Post',
+            'summary': 'Short summary',
+            'content': '<p><strong>Hello</strong> world</p>',
+        }
+        response = self.client.post('/api/blog/', payload, format='json')
+        self.assertIn(response.status_code, {401, 403})
 
     def test_blog_post_list_includes_content(self):
         post = BlogPost.objects.create(
@@ -38,8 +54,14 @@ class ProjectEventApiTests(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.tag = Tag.objects.create(name='AI')
+        self.admin_user = get_user_model().objects.create_user(
+            username='project-admin-user',
+            password='secret123',
+            is_staff=True,
+        )
 
     def test_create_project_with_author_and_date(self):
+        self.client.force_authenticate(user=self.admin_user)
         payload = {
             'title': 'Project Alpha',
             'description': 'Short description',
@@ -54,6 +76,7 @@ class ProjectEventApiTests(TestCase):
         self.assertEqual(project.content, '<p>Long content</p>')
 
     def test_create_event_with_author_and_date(self):
+        self.client.force_authenticate(user=self.admin_user)
         payload = {
             'title': 'Workshop',
             'summary': 'Intro session',
@@ -65,6 +88,22 @@ class ProjectEventApiTests(TestCase):
         event = Event.objects.first()
         self.assertEqual(event.author_name, 'Events Team')
         self.assertEqual(event.content, '<p>Details</p>')
+
+    def test_anonymous_project_and_event_creates_are_denied(self):
+        project_payload = {
+            'title': 'Project Alpha',
+            'description': 'Short description',
+            'content': '<p>Long content</p>',
+        }
+        event_payload = {
+            'title': 'Workshop',
+            'summary': 'Intro session',
+            'content': '<p>Details</p>',
+        }
+        project_response = self.client.post('/api/projects/', project_payload, format='json')
+        event_response = self.client.post('/api/events/', event_payload, format='json')
+        self.assertIn(project_response.status_code, {401, 403})
+        self.assertIn(event_response.status_code, {401, 403})
 
 
 class TagAndItemsApiTests(TestCase):
