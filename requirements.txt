@@ -1,8 +1,1 @@
-Django==5.2.6
-djangorestframework==3.16.1
-django-cors-headers==4.9.0
-django-ckeditor-5==0.2.18
-Pillow==12.1.0
-sqlparse==0.5.5
-asgiref==3.11.1
-tzdata==2025.3
+橄湡潧㴽⸵⸲ശ搊慪杮牯獥晴慲敭潷歲㴽⸳㘱ㄮ਍橤湡潧挭牯⵳敨摡牥㵳㐽㤮〮਍橤湡潧挭敫楤潴⵲㴵〽㈮ㄮസ倊汩潬㵷ㄽ⸲⸱ര猊汱慰獲㵥〽㔮㔮਍獡楧敲㵦㌽ㄮ⸱റ琊摺瑡㵡㈽㈰⸵ള�
