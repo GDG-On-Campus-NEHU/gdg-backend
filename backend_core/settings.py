@@ -88,8 +88,6 @@ if 'postgresql' in DATABASES['default']['ENGINE']:
     DATABASES['default']['OPTIONS'] = {
         'sslmode': 'require',
         'connect_timeout': 10,
-        # 'prepare_threshold': 0 is critical for the Supabase Transaction Pooler
-        'prepare_threshold': 0,
     }
 
 # Password validation
