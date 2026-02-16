@@ -80,9 +80,17 @@ DATABASES = {
         default=os.getenv('DATABASE_URL', f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
         conn_max_age=0,         # Required for Supabase pooling to free up slots
         conn_health_checks=True, # Verifies connection before use
-        ssl_require=True        # Force SSL for Supabase security
     )
 }
+
+# Block to fix the "Hanging" issue
+if 'postgresql' in DATABASES['default']['ENGINE']:
+    DATABASES['default']['OPTIONS'] = {
+        'sslmode': 'require',
+        'connect_timeout': 10,
+        # 'prepare_threshold': 0 is critical for the Supabase Transaction Pooler
+        'prepare_threshold': 0,
+    }
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
