@@ -77,6 +77,8 @@ WSGI_APPLICATION = 'backend_core.wsgi.application'
 DATABASES = {
     'default': dj_database_url.config(
         default=os.getenv('DATABASE_URL', f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
+        conn_max_age=0,         # Releases Supabase connection slots immediately
+        conn_health_checks=True, # Verifies connection is alive before using it
     )
 }
 
@@ -103,25 +105,19 @@ AUTH_PASSWORD_VALIDATORS = [
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
+    'https://gdgnehu.pages.dev', # Added production frontend
 ]
 
 CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'False').lower() == 'true'
+
+# Cache the preflight (OPTIONS) request for 24 hours to stop Render log spam
+CORS_PREFLIGHT_MAX_AGE = 86400
 
 CORS_ALLOW_HEADERS = list(default_headers) + [
     "ngrok-skip-browser-warning",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
-
-CSRF_TRUSTED_ORIGINS = [
-    origin.strip()
-    for origin in os.getenv(
-        'CSRF_TRUSTED_ORIGINS',
-        'http://127.0.0.1:8000,http://localhost:8000,http://127.0.0.1:5173,http://localhost:5173,https://gdgnehu.pages.dev/'
-    ).split(',')
-    if origin.strip()
-]
-
 # ------------------RENDER DEPLOYMENT CONFIGS---------------------------
 
 STATIC_URL = '/static/'
@@ -243,18 +239,3 @@ REST_FRAMEWORK = {
 }
 
 
-REDIS_URL = os.getenv('REDIS_URL', '').strip()
-if REDIS_URL:
-    CACHES = {
-        'default': {
-            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-            'LOCATION': REDIS_URL,
-        }
-    }
-else:
-    CACHES = {
-        'default': {
-            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-            'LOCATION': 'club-site-backend-cache',
-        }
-    }
