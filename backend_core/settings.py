@@ -22,7 +22,7 @@ SECRET_KEY = os.getenv(
 )
 DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = ['*']
+
 
 
 # Application definition
@@ -107,6 +107,20 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
+
+# ---------------- CSRF & PROXY CONFIGURATION ----------------
+
+# Add your new Northflank URL and your frontend URL here
+CSRF_TRUSTED_ORIGINS = [
+    'https://site--gdg-backend--6b5qrljpcqzc.code.run',
+    'https://gdgnehu.pages.dev',
+]
+
+# Tell Django it's behind a proxy and to trust the X-Forwarded-Proto header
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
+
 # ---------------- CORS CONFIGURATION ----------------
 
 CORS_ALLOWED_ORIGINS = [
@@ -114,6 +128,8 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:5173',
     'https://gdgnehu.pages.dev',
 ]
+
+ALLOWED_HOSTS = ['*']
 
 CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'False').lower() == 'true'
 
