@@ -7,7 +7,16 @@ from rest_framework.decorators import api_view
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 from rest_framework.response import Response
 
-from .models import Tag, Project, BlogPost, TeamMember, Roadmap, Event
+from .models import (
+    CACHE_TIMEOUT_SECONDS,
+    EVENTS_LIST_CACHE_KEY,
+    Event,
+    BlogPost,
+    Project,
+    Roadmap,
+    Tag,
+    TeamMember,
+)
 from .serializers import (
     TagSerializer,
     BasicTagSerializer,
@@ -19,7 +28,7 @@ from .serializers import (
 )
 
 VALID_TYPES = {'blogs', 'projects', 'events', 'roadmaps', 'team', 'all'}
-CACHE_TTL_SECONDS = 120
+CACHE_TTL_SECONDS = CACHE_TIMEOUT_SECONDS
 
 
 class IsAdminUserOrReadOnly(BasePermission):
@@ -168,18 +177,17 @@ def tags_list(request):
     item_type = _parse_type(request.query_params.get('type'))
 
     cache_key = f"tags:list:{include_counts}:{item_type}"
-    cached = cache.get(cache_key)
-    if cached is not None:
-        return Response(cached)
 
-    tags = list(Tag.objects.all().order_by('name'))
-    counts = _get_tag_counts(item_type) if include_counts else {}
+    def _build_payload():
+        tags = list(Tag.objects.all().order_by('name'))
+        counts = _get_tag_counts(item_type) if include_counts else {}
 
-    for tag in tags:
-        setattr(tag, 'count', counts.get(tag.id, 0))
+        for tag in tags:
+            setattr(tag, 'count', counts.get(tag.id, 0))
 
-    payload = {'tags': TagSerializer(tags, many=True).data}
-    cache.set(cache_key, payload, CACHE_TTL_SECONDS)
+        return {'tags': TagSerializer(tags, many=True).data}
+
+    payload = cache.get_or_set(cache_key, _build_payload, timeout=CACHE_TTL_SECONDS)
     return Response(payload)
 
 
@@ -368,6 +376,34 @@ class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all().order_by('-event_date')
     serializer_class = EventSerializer
     permission_classes = [IsAdminUserOrReadOnly]
+
+    def list(self, request, *args, **kwargs):
+        cache_key = EVENTS_LIST_CACHE_KEY
+        if request.query_params:
+            cache_key = f"{EVENTS_LIST_CACHE_KEY}:{request.get_full_path()}"
+
+        def _build_payload():
+            queryset = self.filter_queryset(self.get_queryset().prefetch_related(
+                'tags', 'speakers', 'tech_tag_items', 'gallery_image_items', 'resource_items'
+            ))
+            serializer = self.get_serializer(queryset, many=True)
+            return serializer.data
+
+        payload = cache.get_or_set(cache_key, _build_payload, timeout=CACHE_TTL_SECONDS)
+        return Response(payload)
+
+    def retrieve(self, request, *args, **kwargs):
+        event_id = kwargs.get('pk')
+        cache_key = f"events:detail:{event_id}"
+
+        def _build_payload():
+            event = self.get_queryset().prefetch_related(
+                'tags', 'speakers', 'tech_tag_items', 'gallery_image_items', 'resource_items'
+            ).get(pk=event_id)
+            return self.get_serializer(event).data
+
+        payload = cache.get_or_set(cache_key, _build_payload, timeout=CACHE_TTL_SECONDS)
+        return Response(payload)
 
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):

@@ -1,4 +1,7 @@
 from django.db import models
+from django.core.cache import cache
+from django.db.models.signals import post_delete, post_save
+from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.text import slugify
 
@@ -185,3 +188,33 @@ class EventResource(models.Model):
 
     def __str__(self):
         return self.label
+
+
+CACHE_TIMEOUT_SECONDS = 60 * 60
+TAG_CACHE_KEY = 'tags:list:False:all'
+EVENTS_LIST_CACHE_KEY = 'events:list'
+
+
+def warm_tag_event_cache():
+    from .serializers import EventSerializer, TagSerializer
+
+    tags = list(Tag.objects.all().order_by('name'))
+    events = list(
+        Event.objects.all()
+        .order_by('-event_date')
+        .prefetch_related('tags', 'speakers', 'tech_tag_items', 'gallery_image_items', 'resource_items')
+    )
+
+    cache.set(TAG_CACHE_KEY, {'tags': TagSerializer(tags, many=True).data}, CACHE_TIMEOUT_SECONDS)
+    cache.set(EVENTS_LIST_CACHE_KEY, EventSerializer(events, many=True).data, CACHE_TIMEOUT_SECONDS)
+
+    for event in events:
+        cache.set(f'events:detail:{event.id}', EventSerializer(event).data, CACHE_TIMEOUT_SECONDS)
+
+
+@receiver(post_save, sender=Tag)
+@receiver(post_delete, sender=Tag)
+@receiver(post_save, sender=Event)
+@receiver(post_delete, sender=Event)
+def refresh_tag_event_cache_on_change(**kwargs):
+    warm_tag_event_cache()
