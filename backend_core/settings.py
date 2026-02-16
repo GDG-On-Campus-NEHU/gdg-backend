@@ -74,14 +74,15 @@ TEMPLATES = [
 WSGI_APPLICATION = 'backend_core.wsgi.application'
 
 
+# ---------------- DATABASE CONFIGURATION ----------------
 DATABASES = {
     'default': dj_database_url.config(
         default=os.getenv('DATABASE_URL', f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
-        conn_max_age=0,         # Releases Supabase connection slots immediately
-        conn_health_checks=True, # Verifies connection is alive before using it
+        conn_max_age=0,         # Required for Supabase pooling to free up slots
+        conn_health_checks=True, # Verifies connection before use
+        ssl_require=True        # Force SSL for Supabase security
     )
 }
-
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -100,12 +101,12 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-# ---------------- CORS CONFIGURATION (FIXED) ----------------
+# ---------------- CORS CONFIGURATION ----------------
 
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
-    'https://gdgnehu.pages.dev', # Added production frontend
+    'https://gdgnehu.pages.dev',
 ]
 
 CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'False').lower() == 'true'
@@ -118,6 +119,7 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+
 # ------------------RENDER DEPLOYMENT CONFIGS---------------------------
 
 STATIC_URL = '/static/'
