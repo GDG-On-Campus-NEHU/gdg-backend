@@ -12,6 +12,7 @@ from .views import (
     tag_detail,
     items_list,
     tags_popular,
+    landing_bootstrap,
 )
 
 router = DefaultRouter()
@@ -28,5 +29,6 @@ urlpatterns = [
     path('tags/<slug:slug>/', tag_detail, name='tag-detail'),
     path('items/', items_list, name='items-list'),
     path('search/', global_search, name='global-search'),
+    path('bootstrap/', landing_bootstrap, name='landing-bootstrap'),
     path('', include(router.urls)),
 ]
