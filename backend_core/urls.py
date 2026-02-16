@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import include, path
 
-from .views import ping
+from .views import favicon, ping
 
 
 # Main URL configuration for Google Developer's Group, NEHU backend
@@ -10,6 +10,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('landing_page.urls')),
     path('ping/', ping),
+    path('favicon.ico', favicon),
 ]
 
 urlpatterns += [
