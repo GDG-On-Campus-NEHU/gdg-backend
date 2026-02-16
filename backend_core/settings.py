@@ -263,4 +263,11 @@ REST_FRAMEWORK = {
     ],
 }
 
+# In-memory cache (per-process) to reduce network trips to Supabase for read-heavy endpoints.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'gdg-backend-locmem-cache',
+    }
+}
 
