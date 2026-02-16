@@ -88,6 +88,7 @@ if 'postgresql' in DATABASES['default']['ENGINE']:
     DATABASES['default']['OPTIONS'] = {
         'sslmode': 'require',
         'connect_timeout': 10,
+        'target_session_attrs': 'read-write',
     }
 
 # Password validation
