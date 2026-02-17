@@ -122,7 +122,7 @@ def _serialize_item(obj, item_type):
         summary = obj.bio
         image_url = obj.photo_url
 
-    return {
+    payload = {
         'id': obj.id,
         'type': item_type,
         'title': getattr(obj, 'title', None) or getattr(obj, 'name', ''),
@@ -130,6 +130,15 @@ def _serialize_item(obj, item_type):
         'image_url': image_url or '',
         'tags': BasicTagSerializer(obj.tags.all(), many=True).data,
     }
+
+    if item_type == 'team':
+        payload['role'] = getattr(obj, 'role', '')
+    if item_type == 'roadmaps':
+        icon_name = getattr(obj, 'icon_name', '')
+        payload['icon_name'] = icon_name
+        payload['emoji'] = icon_name
+
+    return payload
 
 
 def _get_base_queryset(item_type):
