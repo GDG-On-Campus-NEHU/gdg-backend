@@ -129,8 +129,7 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
     'https://gdgnehu.pages.dev',
-    'https://little-queen-4667.gdgnehu.workers.dev/'
-
+    'https://*.gdgnehu.workers.dev/'
 
 ]
 
