@@ -263,6 +263,14 @@ REST_FRAMEWORK = {
     ],
 }
 
+
+# Global API response cache controls (single-line kill switch via env).
+API_RESPONSE_CACHE_ENABLED = os.getenv('API_RESPONSE_CACHE_ENABLED', 'true').lower() == 'true'
+API_CACHE_CODE_VERSION = os.getenv('API_CACHE_CODE_VERSION', 'v1')
+API_CACHE_SOFT_TTL_SECONDS = int(os.getenv('API_CACHE_SOFT_TTL_SECONDS', '300'))
+API_CACHE_HARD_TTL_SECONDS = int(os.getenv('API_CACHE_HARD_TTL_SECONDS', '3600'))
+API_CACHE_LOCK_TIMEOUT_SECONDS = int(os.getenv('API_CACHE_LOCK_TIMEOUT_SECONDS', '60'))
+
 # In-memory cache (per-process) to reduce network trips to Supabase for read-heavy endpoints.
 CACHES = {
     'default': {
