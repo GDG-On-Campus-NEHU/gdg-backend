@@ -193,6 +193,8 @@ class EventResource(models.Model):
 CACHE_TIMEOUT_SECONDS = 60 * 60
 TAG_CACHE_KEY = 'tags:list:False:all'
 EVENTS_LIST_CACHE_KEY = 'events:list'
+BOOTSTRAP_CACHE_DIRTY_KEY = 'landing:bootstrap:v1:dirty'
+API_CACHE_GENERATION_KEY = 'api:cache:generation'
 
 
 def warm_tag_event_cache():
@@ -216,5 +218,18 @@ def warm_tag_event_cache():
 @receiver(post_delete, sender=Tag)
 @receiver(post_save, sender=Event)
 @receiver(post_delete, sender=Event)
+@receiver(post_save, sender=BlogPost)
+@receiver(post_delete, sender=BlogPost)
+@receiver(post_save, sender=Project)
+@receiver(post_delete, sender=Project)
+@receiver(post_save, sender=Roadmap)
+@receiver(post_delete, sender=Roadmap)
+@receiver(post_save, sender=TeamMember)
+@receiver(post_delete, sender=TeamMember)
 def refresh_tag_event_cache_on_change(**kwargs):
-    warm_tag_event_cache()
+    # Phase 2: avoid expensive synchronous cache rebuilds on writes.
+    # Invalidate hot keys cheaply and let reads/cron repopulate.
+    cache.delete(TAG_CACHE_KEY)
+    cache.delete(EVENTS_LIST_CACHE_KEY)
+    cache.set(BOOTSTRAP_CACHE_DIRTY_KEY, True, CACHE_TIMEOUT_SECONDS * 6)
+    cache.set(API_CACHE_GENERATION_KEY, str(timezone.now().timestamp()), timeout=None)

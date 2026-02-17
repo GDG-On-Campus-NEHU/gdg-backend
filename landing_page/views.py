@@ -1,34 +1,48 @@
+import hashlib
+import threading
+
+from django.conf import settings
 from django.core.cache import cache
-from django.db.models import Q, Count
-from django.utils.text import slugify
 from django.core.paginator import Paginator
+from django.db import close_old_connections
+from django.db.models import Count, Q
+from django.utils import timezone
+from django.utils.text import slugify
 from rest_framework import viewsets
 from rest_framework.decorators import api_view
-from rest_framework.permissions import BasePermission, SAFE_METHODS
+from rest_framework.permissions import SAFE_METHODS, BasePermission
 from rest_framework.response import Response
 
 from .models import (
+    BOOTSTRAP_CACHE_DIRTY_KEY,
     CACHE_TIMEOUT_SECONDS,
     EVENTS_LIST_CACHE_KEY,
-    Event,
     BlogPost,
+    Event,
     Project,
     Roadmap,
     Tag,
     TeamMember,
 )
 from .serializers import (
-    TagSerializer,
     BasicTagSerializer,
-    ProjectSerializer,
     BlogPostSerializer,
-    TeamMemberSerializer,
-    RoadmapSerializer,
     EventSerializer,
+    ProjectSerializer,
+    RoadmapSerializer,
+    TagSerializer,
+    TeamMemberSerializer,
 )
 
 VALID_TYPES = {'blogs', 'projects', 'events', 'roadmaps', 'team', 'all'}
 CACHE_TTL_SECONDS = CACHE_TIMEOUT_SECONDS
+BOOTSTRAP_CACHE_KEY = 'landing:bootstrap:v1'
+API_CACHE_GENERATION_KEY = 'api:cache:generation'
+API_CACHE_CODE_VERSION = getattr(settings, 'API_CACHE_CODE_VERSION', 'v1')
+API_CACHE_ENABLED = getattr(settings, 'API_RESPONSE_CACHE_ENABLED', True)
+API_CACHE_SOFT_TTL_SECONDS = getattr(settings, 'API_CACHE_SOFT_TTL_SECONDS', 5 * 60)
+API_CACHE_HARD_TTL_SECONDS = getattr(settings, 'API_CACHE_HARD_TTL_SECONDS', 60 * 60)
+API_CACHE_LOCK_TIMEOUT_SECONDS = getattr(settings, 'API_CACHE_LOCK_TIMEOUT_SECONDS', 60)
 
 
 class IsAdminUserOrReadOnly(BasePermission):
@@ -120,7 +134,7 @@ def _serialize_item(obj, item_type):
         summary = obj.bio
         image_url = obj.photo_url
 
-    return {
+    payload = {
         'id': obj.id,
         'type': item_type,
         'title': getattr(obj, 'title', None) or getattr(obj, 'name', ''),
@@ -128,6 +142,15 @@ def _serialize_item(obj, item_type):
         'image_url': image_url or '',
         'tags': BasicTagSerializer(obj.tags.all(), many=True).data,
     }
+
+    if item_type == 'team':
+        payload['role'] = getattr(obj, 'role', '')
+    if item_type == 'roadmaps':
+        icon_name = getattr(obj, 'icon_name', '')
+        payload['icon_name'] = icon_name
+        payload['emoji'] = icon_name
+
+    return payload
 
 
 def _get_base_queryset(item_type):
@@ -171,12 +194,146 @@ def _build_items_queryset(item_type, tag=None, q='', sort='recent'):
     return queryset
 
 
+def _cache_enabled():
+    return API_CACHE_ENABLED
+
+
+def _cache_generation():
+    generation = cache.get(API_CACHE_GENERATION_KEY)
+    if generation is None:
+        generation = '0'
+        cache.set(API_CACHE_GENERATION_KEY, generation, timeout=None)
+    return str(generation)
+
+
+def bump_api_cache_generation():
+    cache.set(API_CACHE_GENERATION_KEY, str(timezone.now().timestamp()), timeout=None)
+
+
+def _cache_base_key(request, namespace):
+    raw_key = f"{namespace}|{request.get_full_path()}|{_cache_generation()}|{API_CACHE_CODE_VERSION}"
+    key_hash = hashlib.sha256(raw_key.encode('utf-8')).hexdigest()
+    return f"api-cache:{key_hash}"
+
+
+def _store_cached_payload(base_key, payload):
+    now_ts = timezone.now().timestamp()
+    meta = {
+        'soft_expires_at_ts': now_ts + API_CACHE_SOFT_TTL_SECONDS,
+        'hard_expires_at_ts': now_ts + API_CACHE_HARD_TTL_SECONDS,
+        'generated_at_ts': now_ts,
+    }
+    cache.set(f'{base_key}:payload', payload, API_CACHE_HARD_TTL_SECONDS)
+    cache.set(f'{base_key}:meta', meta, API_CACHE_HARD_TTL_SECONDS)
+
+
+def _refresh_payload(base_key, builder):
+    payload = builder()
+    _store_cached_payload(base_key, payload)
+    return payload
+
+
+def _refresh_payload_in_background(base_key, builder):
+    lock_key = f'{base_key}:lock'
+    if not cache.add(lock_key, True, API_CACHE_LOCK_TIMEOUT_SECONDS):
+        return
+
+    def _runner():
+        try:
+            close_old_connections()
+            _refresh_payload(base_key, builder)
+        finally:
+            cache.delete(lock_key)
+            close_old_connections()
+
+    threading.Thread(target=_runner, daemon=True).start()
+
+
+def cached_payload(request, namespace, builder):
+    if not _cache_enabled():
+        return builder()
+
+    base_key = _cache_base_key(request, namespace)
+    payload_key = f'{base_key}:payload'
+    meta_key = f'{base_key}:meta'
+    lock_key = f'{base_key}:lock'
+
+    payload = cache.get(payload_key)
+    meta = cache.get(meta_key) or {}
+    now_ts = timezone.now().timestamp()
+
+    if payload is None:
+        if cache.add(lock_key, True, API_CACHE_LOCK_TIMEOUT_SECONDS):
+            try:
+                return _refresh_payload(base_key, builder)
+            finally:
+                cache.delete(lock_key)
+        return builder()
+
+    if now_ts >= meta.get('hard_expires_at_ts', 0):
+        if cache.add(lock_key, True, API_CACHE_LOCK_TIMEOUT_SECONDS):
+            try:
+                return _refresh_payload(base_key, builder)
+            finally:
+                cache.delete(lock_key)
+        return payload
+
+    if now_ts >= meta.get('soft_expires_at_ts', 0):
+        _refresh_payload_in_background(base_key, builder)
+
+    return payload
+
+
+def _build_bootstrap_payload():
+    tags = list(Tag.objects.all().order_by('name'))
+    tag_counts = _get_tag_counts('all')
+    for tag in tags:
+        setattr(tag, 'count', tag_counts.get(tag.id, 0))
+
+    tags_popular_payload = sorted(tags, key=lambda tag: tag.count, reverse=True)[:10]
+
+    events = list(
+        Event.objects.all()
+        .order_by('-event_date')
+        .prefetch_related('tags', 'speakers', 'tech_tag_items', 'gallery_image_items', 'resource_items')[:8]
+    )
+
+    items_by_type = {}
+    for item_type in ('blogs', 'projects', 'events', 'roadmaps', 'team'):
+        queryset = _build_items_queryset(item_type=item_type, sort='recent')[:8]
+        items_by_type[item_type] = [_serialize_item(obj, item_type) for obj in queryset]
+
+    return {
+        'meta': {
+            'generated_at': timezone.now().isoformat(),
+            'source': 'cache',
+        },
+        'tags': TagSerializer(tags, many=True).data,
+        'tags_popular': TagSerializer(tags_popular_payload, many=True).data,
+        'events': EventSerializer(events, many=True).data,
+        'items_by_type': items_by_type,
+    }
+
+
+def refresh_bootstrap_cache(force=False):
+    if force or _cache_enabled():
+        from django.test.client import RequestFactory
+
+        request = RequestFactory().get('/api/bootstrap/')
+        return cached_payload(request, 'bootstrap', _build_bootstrap_payload)
+    return _build_bootstrap_payload()
+
+
+@api_view(['GET'])
+def landing_bootstrap(request):
+    payload = cached_payload(request, 'bootstrap', _build_bootstrap_payload)
+    return Response(payload)
+
+
 @api_view(['GET'])
 def tags_list(request):
     include_counts = _parse_bool(request.query_params.get('include_counts'), default=False)
     item_type = _parse_type(request.query_params.get('type'))
-
-    cache_key = f"tags:list:{include_counts}:{item_type}"
 
     def _build_payload():
         tags = list(Tag.objects.all().order_by('name'))
@@ -187,41 +344,46 @@ def tags_list(request):
 
         return {'tags': TagSerializer(tags, many=True).data}
 
-    payload = cache.get_or_set(cache_key, _build_payload, timeout=CACHE_TTL_SECONDS)
+    payload = cached_payload(request, 'tags-list', _build_payload)
     return Response(payload)
 
 
 @api_view(['GET'])
 def tag_detail(request, slug):
-    tag = _find_tag_by_slug(slug)
-    if not tag:
-        return Response({'detail': 'Not found.'}, status=404)
-    item_type = _parse_type(request.query_params.get('type'))
-    page = _parse_int(request.query_params.get('page', 1), default=1)
-    per_page = _parse_int(request.query_params.get('per_page', 20), default=20, max_value=100)
-    sort = request.query_params.get('sort', 'recent').lower()
+    def _build_payload():
+        tag = _find_tag_by_slug(slug)
+        if not tag:
+            return {'detail': 'Not found.'}, 404
 
-    if item_type == 'all':
-        item_type = 'blogs'
+        item_type = _parse_type(request.query_params.get('type'))
+        page = _parse_int(request.query_params.get('page', 1), default=1)
+        per_page = _parse_int(request.query_params.get('per_page', 20), default=20, max_value=100)
+        sort = request.query_params.get('sort', 'recent').lower()
 
-    counts = _get_tag_counts(item_type)
-    setattr(tag, 'count', counts.get(tag.id, 0))
+        if item_type == 'all':
+            item_type = 'blogs'
 
-    queryset = _build_items_queryset(item_type=item_type, tag=tag, sort=sort)
-    paginator = Paginator(queryset, per_page)
-    current_page = paginator.get_page(page)
+        counts = _get_tag_counts(item_type)
+        setattr(tag, 'count', counts.get(tag.id, 0))
 
-    items = [_serialize_item(obj, item_type) for obj in current_page.object_list]
+        queryset = _build_items_queryset(item_type=item_type, tag=tag, sort=sort)
+        paginator = Paginator(queryset, per_page)
+        current_page = paginator.get_page(page)
 
-    return Response({
-        'tag': TagSerializer(tag).data,
-        'items': items,
-        'pagination': {
-            'page': current_page.number,
-            'per_page': per_page,
-            'total': paginator.count,
-        },
-    })
+        items = [_serialize_item(obj, item_type) for obj in current_page.object_list]
+
+        return {
+            'tag': TagSerializer(tag).data,
+            'items': items,
+            'pagination': {
+                'page': current_page.number,
+                'per_page': per_page,
+                'total': paginator.count,
+            },
+        }, 200
+
+    payload, status_code = cached_payload(request, f'tag-detail:{slug}', _build_payload)
+    return Response(payload, status=status_code)
 
 
 @api_view(['GET'])
@@ -233,179 +395,187 @@ def items_list(request):
     per_page = _parse_int(request.query_params.get('per_page', 20), default=20, max_value=100)
     sort = request.query_params.get('sort', 'recent').lower()
 
-    tag = _resolve_tag(tag_value)
-    if tag_value and not tag:
-        return Response({'items': [], 'pagination': {'page': page, 'per_page': per_page, 'total': 0}})
+    def _build_payload():
+        tag = _resolve_tag(tag_value)
+        if tag_value and not tag:
+            return {'items': [], 'pagination': {'page': page, 'per_page': per_page, 'total': 0}}
 
-    types_to_query = ['blogs', 'projects', 'events', 'roadmaps', 'team'] if item_type == 'all' else [item_type]
+        types_to_query = ['blogs', 'projects', 'events', 'roadmaps', 'team'] if item_type == 'all' else [item_type]
 
-    all_items = []
-    for current_type in types_to_query:
-        queryset = _build_items_queryset(current_type, tag=tag, q=q, sort=sort)
-        for obj in queryset:
-            all_items.append((obj, current_type))
+        all_items = []
+        for current_type in types_to_query:
+            queryset = _build_items_queryset(current_type, tag=tag, q=q, sort=sort)
+            for obj in queryset:
+                all_items.append((obj, current_type))
 
-    if sort == 'recent':
-        def _sort_key(item_tuple):
-            obj, current_type = item_tuple
-            if current_type == 'events':
-                return (0, obj.event_date.timestamp())
-            if current_type == 'team':
-                return (1, -getattr(obj, 'position_rank', 9999))
-            published = getattr(obj, 'published_date', None)
-            return (0, published.timestamp() if published else 0)
+        if sort == 'recent':
+            def _sort_key(item_tuple):
+                obj, current_type = item_tuple
+                if current_type == 'events':
+                    return (0, obj.event_date.timestamp())
+                if current_type == 'team':
+                    return (1, -getattr(obj, 'position_rank', 9999))
+                published = getattr(obj, 'published_date', None)
+                return (0, published.timestamp() if published else 0)
 
-        if item_type == 'all':
-            all_items.sort(key=_sort_key, reverse=True)
+            if item_type == 'all':
+                all_items.sort(key=_sort_key, reverse=True)
 
-    serialized = [_serialize_item(obj, current_type) for obj, current_type in all_items]
-    paginator = Paginator(serialized, per_page)
-    current_page = paginator.get_page(page)
+        serialized = [_serialize_item(obj, current_type) for obj, current_type in all_items]
+        paginator = Paginator(serialized, per_page)
+        current_page = paginator.get_page(page)
 
-    return Response({
-        'items': list(current_page.object_list),
-        'pagination': {
-            'page': current_page.number,
-            'per_page': per_page,
-            'total': paginator.count,
-        },
-    })
+        return {
+            'items': list(current_page.object_list),
+            'pagination': {
+                'page': current_page.number,
+                'per_page': per_page,
+                'total': paginator.count,
+            },
+        }
+
+    payload = cached_payload(request, 'items-list', _build_payload)
+    return Response(payload)
 
 
 @api_view(['GET'])
 def tags_popular(request):
     limit = _parse_int(request.query_params.get('limit', 10), default=10, max_value=50)
-    counts = _get_tag_counts('all')
 
-    tags = list(Tag.objects.filter(id__in=counts.keys()))
-    for tag in tags:
-        setattr(tag, 'count', counts.get(tag.id, 0))
+    def _build_payload():
+        counts = _get_tag_counts('all')
+        tags = list(Tag.objects.filter(id__in=counts.keys()))
+        for tag in tags:
+            setattr(tag, 'count', counts.get(tag.id, 0))
 
-    tags.sort(key=lambda x: x.count, reverse=True)
+        tags.sort(key=lambda x: x.count, reverse=True)
+        return {'tags': TagSerializer(tags[:limit], many=True).data}
 
-    return Response({'tags': TagSerializer(tags[:limit], many=True).data})
+    payload = cached_payload(request, 'tags-popular', _build_payload)
+    return Response(payload)
 
 
 @api_view(['GET'])
 def global_search(request):
     query = request.query_params.get('q', '').strip()
 
-    if not query or len(query) < 2:
-        return Response({
+    def _build_payload():
+        if not query or len(query) < 2:
+            return {
+                'query': query,
+                'error': 'Search query must be at least 2 characters',
+                'blogs': [],
+                'projects': [],
+                'team': [],
+                'events': [],
+                'roadmaps': [],
+                'tags': [],
+            }
+
+        blogs = BlogPost.objects.filter(
+            Q(title__icontains=query) |
+            Q(summary__icontains=query) |
+            Q(content__icontains=query) |
+            Q(author_name__icontains=query)
+        ).order_by('-published_date')[:10]
+
+        projects = Project.objects.filter(
+            Q(title__icontains=query) |
+            Q(description__icontains=query) |
+            Q(content__icontains=query) |
+            Q(author_name__icontains=query)
+        ).order_by('-published_date')[:10]
+
+        team = TeamMember.objects.filter(
+            Q(name__icontains=query) |
+            Q(role__icontains=query) |
+            Q(bio__icontains=query) |
+            Q(skills__icontains=query)
+        ).order_by('position_rank')[:10]
+
+        events = Event.objects.filter(
+            Q(title__icontains=query) |
+            Q(summary__icontains=query) |
+            Q(content__icontains=query) |
+            Q(author_name__icontains=query)
+        ).order_by('-event_date')[:10]
+
+        roadmaps = Roadmap.objects.filter(
+            Q(title__icontains=query) |
+            Q(description__icontains=query) |
+            Q(content__icontains=query)
+        ).order_by('-published_date')[:10]
+
+        tags = Tag.objects.filter(Q(name__icontains=query))[:10]
+
+        return {
             'query': query,
-            'error': 'Search query must be at least 2 characters',
-            'blogs': [],
-            'projects': [],
-            'team': [],
-            'events': [],
-            'roadmaps': [],
-            'tags': []
-        })
+            'blogs': BlogPostSerializer(blogs, many=True).data,
+            'projects': ProjectSerializer(projects, many=True).data,
+            'team': TeamMemberSerializer(team, many=True).data,
+            'events': EventSerializer(events, many=True).data,
+            'roadmaps': RoadmapSerializer(roadmaps, many=True).data,
+            'tags': TagSerializer(tags, many=True).data,
+        }
 
-    blogs = BlogPost.objects.filter(
-        Q(title__icontains=query) |
-        Q(summary__icontains=query) |
-        Q(content__icontains=query) |
-        Q(author_name__icontains=query)
-    ).order_by('-published_date')[:10]
-
-    projects = Project.objects.filter(
-        Q(title__icontains=query) |
-        Q(description__icontains=query) |
-        Q(content__icontains=query) |
-        Q(author_name__icontains=query)
-    ).order_by('-published_date')[:10]
-
-    team = TeamMember.objects.filter(
-        Q(name__icontains=query) |
-        Q(role__icontains=query) |
-        Q(bio__icontains=query) |
-        Q(skills__icontains=query)
-    ).order_by('position_rank')[:10]
-
-    events = Event.objects.filter(
-        Q(title__icontains=query) |
-        Q(summary__icontains=query) |
-        Q(content__icontains=query) |
-        Q(author_name__icontains=query)
-    ).order_by('-event_date')[:10]
-
-    roadmaps = Roadmap.objects.filter(
-        Q(title__icontains=query) |
-        Q(description__icontains=query) |
-        Q(content__icontains=query)
-    ).order_by('-published_date')[:10]
-
-    tags = Tag.objects.filter(Q(name__icontains=query))[:10]
-
-    return Response({
-        'query': query,
-        'blogs': BlogPostSerializer(blogs, many=True).data,
-        'projects': ProjectSerializer(projects, many=True).data,
-        'team': TeamMemberSerializer(team, many=True).data,
-        'events': EventSerializer(events, many=True).data,
-        'roadmaps': RoadmapSerializer(roadmaps, many=True).data,
-        'tags': TagSerializer(tags, many=True).data,
-    })
+    payload = cached_payload(request, 'global-search', _build_payload)
+    return Response(payload)
 
 
-class ProjectViewSet(viewsets.ModelViewSet):
+class CachedReadRetrieveMixin:
+    def _cache_namespace(self, action):
+        return f'viewset:{self.__class__.__name__}:{action}'
+
+    def list(self, request, *args, **kwargs):
+        parent_list = super(CachedReadRetrieveMixin, self).list
+        payload = cached_payload(
+            request,
+            self._cache_namespace('list'),
+            lambda: parent_list(request, *args, **kwargs).data,
+        )
+        return Response(payload)
+
+    def retrieve(self, request, *args, **kwargs):
+        parent_retrieve = super(CachedReadRetrieveMixin, self).retrieve
+        payload = cached_payload(
+            request,
+            self._cache_namespace('retrieve'),
+            lambda: parent_retrieve(request, *args, **kwargs).data,
+        )
+        return Response(payload)
+
+
+class ProjectViewSet(CachedReadRetrieveMixin, viewsets.ModelViewSet):
     queryset = Project.objects.all().order_by('-published_date')
     serializer_class = ProjectSerializer
     permission_classes = [IsAdminUserOrReadOnly]
 
 
-class BlogPostViewSet(viewsets.ModelViewSet):
+class BlogPostViewSet(CachedReadRetrieveMixin, viewsets.ModelViewSet):
     queryset = BlogPost.objects.all().order_by('-published_date')
     serializer_class = BlogPostSerializer
     permission_classes = [IsAdminUserOrReadOnly]
 
 
-class TeamMemberViewSet(viewsets.ReadOnlyModelViewSet):
+class TeamMemberViewSet(CachedReadRetrieveMixin, viewsets.ReadOnlyModelViewSet):
     queryset = TeamMember.objects.all().order_by('position_rank')
     serializer_class = TeamMemberSerializer
 
 
-class RoadmapViewSet(viewsets.ModelViewSet):
+class RoadmapViewSet(CachedReadRetrieveMixin, viewsets.ModelViewSet):
     queryset = Roadmap.objects.all().order_by('-published_date')
     serializer_class = RoadmapSerializer
     permission_classes = [IsAdminUserOrReadOnly]
 
 
-class EventViewSet(viewsets.ModelViewSet):
-    queryset = Event.objects.all().order_by('-event_date')
+class EventViewSet(CachedReadRetrieveMixin, viewsets.ModelViewSet):
+    queryset = Event.objects.all().order_by('-event_date').prefetch_related(
+        'tags', 'speakers', 'tech_tag_items', 'gallery_image_items', 'resource_items'
+    )
     serializer_class = EventSerializer
     permission_classes = [IsAdminUserOrReadOnly]
 
-    def list(self, request, *args, **kwargs):
-        cache_key = EVENTS_LIST_CACHE_KEY
-        if request.query_params:
-            cache_key = f"{EVENTS_LIST_CACHE_KEY}:{request.get_full_path()}"
 
-        def _build_payload():
-            queryset = self.filter_queryset(self.get_queryset().prefetch_related(
-                'tags', 'speakers', 'tech_tag_items', 'gallery_image_items', 'resource_items'
-            ))
-            serializer = self.get_serializer(queryset, many=True)
-            return serializer.data
-
-        payload = cache.get_or_set(cache_key, _build_payload, timeout=CACHE_TTL_SECONDS)
-        return Response(payload)
-
-    def retrieve(self, request, *args, **kwargs):
-        event_id = kwargs.get('pk')
-        cache_key = f"events:detail:{event_id}"
-
-        def _build_payload():
-            event = self.get_queryset().prefetch_related(
-                'tags', 'speakers', 'tech_tag_items', 'gallery_image_items', 'resource_items'
-            ).get(pk=event_id)
-            return self.get_serializer(event).data
-
-        payload = cache.get_or_set(cache_key, _build_payload, timeout=CACHE_TTL_SECONDS)
-        return Response(payload)
-
-
-class TagViewSet(viewsets.ReadOnlyModelViewSet):
+class TagViewSet(CachedReadRetrieveMixin, viewsets.ReadOnlyModelViewSet):
     queryset = Tag.objects.all().order_by('name')
     serializer_class = TagSerializer
