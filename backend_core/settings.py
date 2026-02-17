@@ -115,6 +115,7 @@ AUTH_PASSWORD_VALIDATORS = [
 CSRF_TRUSTED_ORIGINS = [
     'https://site--gdg-backend--6b5qrljpcqzc.code.run',
     'https://gdgnehu.pages.dev',
+    'https://little-queen-4667.gdgnehu.workers.dev/'
 ]
 
 # Tell Django it's behind a proxy and to trust the X-Forwarded-Proto header
@@ -128,6 +129,9 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
     'https://gdgnehu.pages.dev',
+    'https://little-queen-4667.gdgnehu.workers.dev/'
+
+
 ]
 
 ALLOWED_HOSTS = ['*']
