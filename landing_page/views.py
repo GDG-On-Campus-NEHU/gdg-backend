@@ -3,6 +3,9 @@ import threading
 
 from django.conf import settings
 from django.core.cache import cache
+from django.db.models import Q, Count
+from django.utils import timezone
+from django.utils.text import slugify
 from django.core.paginator import Paginator
 from django.db import close_old_connections
 from django.db.models import Count, Q
