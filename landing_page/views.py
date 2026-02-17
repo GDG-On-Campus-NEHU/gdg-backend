@@ -1,5 +1,6 @@
 from django.core.cache import cache
 from django.db.models import Q, Count
+from django.utils import timezone
 from django.utils.text import slugify
 from django.core.paginator import Paginator
 from rest_framework import viewsets
@@ -29,6 +30,7 @@ from .serializers import (
 
 VALID_TYPES = {'blogs', 'projects', 'events', 'roadmaps', 'team', 'all'}
 CACHE_TTL_SECONDS = CACHE_TIMEOUT_SECONDS
+BOOTSTRAP_CACHE_KEY = 'landing:bootstrap:v1'
 
 
 class IsAdminUserOrReadOnly(BasePermission):
@@ -120,7 +122,7 @@ def _serialize_item(obj, item_type):
         summary = obj.bio
         image_url = obj.photo_url
 
-    return {
+    payload = {
         'id': obj.id,
         'type': item_type,
         'title': getattr(obj, 'title', None) or getattr(obj, 'name', ''),
@@ -128,6 +130,15 @@ def _serialize_item(obj, item_type):
         'image_url': image_url or '',
         'tags': BasicTagSerializer(obj.tags.all(), many=True).data,
     }
+
+    if item_type == 'team':
+        payload['role'] = getattr(obj, 'role', '')
+    if item_type == 'roadmaps':
+        icon_name = getattr(obj, 'icon_name', '')
+        payload['icon_name'] = icon_name
+        payload['emoji'] = icon_name
+
+    return payload
 
 
 def _get_base_queryset(item_type):
@@ -169,6 +180,43 @@ def _build_items_queryset(item_type, tag=None, q='', sort='recent'):
             queryset = queryset.order_by(f'-{order_field}')
 
     return queryset
+
+
+def _build_bootstrap_payload():
+    tags = list(Tag.objects.all().order_by('name'))
+    tag_counts = _get_tag_counts('all')
+    for tag in tags:
+        setattr(tag, 'count', tag_counts.get(tag.id, 0))
+
+    tags_popular_payload = sorted(tags, key=lambda tag: tag.count, reverse=True)[:10]
+
+    events = list(
+        Event.objects.all()
+        .order_by('-event_date')
+        .prefetch_related('tags', 'speakers', 'tech_tag_items', 'gallery_image_items', 'resource_items')[:8]
+    )
+
+    items_by_type = {}
+    for item_type in ('blogs', 'projects', 'events', 'roadmaps', 'team'):
+        queryset = _build_items_queryset(item_type=item_type, sort='recent')[:8]
+        items_by_type[item_type] = [_serialize_item(obj, item_type) for obj in queryset]
+
+    return {
+        'meta': {
+            'generated_at': timezone.now().isoformat(),
+            'source': 'cache',
+        },
+        'tags': TagSerializer(tags, many=True).data,
+        'tags_popular': TagSerializer(tags_popular_payload, many=True).data,
+        'events': EventSerializer(events, many=True).data,
+        'items_by_type': items_by_type,
+    }
+
+
+@api_view(['GET'])
+def landing_bootstrap(request):
+    payload = cache.get_or_set(BOOTSTRAP_CACHE_KEY, _build_bootstrap_payload, timeout=CACHE_TTL_SECONDS)
+    return Response(payload)
 
 
 @api_view(['GET'])
