@@ -129,8 +129,7 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
     'https://gdgnehu.pages.dev',
-    'https://*.gdgnehu.workers.dev/'
-
+    'https://northflank-cacher.gdgnehu.workers.dev'
 ]
 
 ALLOWED_HOSTS = ['*']
