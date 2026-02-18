@@ -52,4 +52,4 @@ Health check: `http://127.0.0.1:8000/ping/`
 
 ## License / ownership
 
-Maintained by GDG NEHU engineering team.
+Maintained by GDG NEHU tech team.
