@@ -12,6 +12,16 @@ except ImportError:  # fallback for environments without CKEditor
     CKEditor5Field = models.TextField
 
 
+def _generate_unique_slug(model_cls, source_value, instance_pk=None, default_prefix='item'):
+    base_slug = slugify(source_value) or default_prefix
+    candidate = base_slug
+    suffix = 1
+    while model_cls.objects.exclude(pk=instance_pk).filter(slug=candidate).exists():
+        candidate = f"{base_slug}-{suffix}"
+        suffix += 1
+    return candidate
+
+
 # Model for reusable tags (e.g., "Robotics", "AI/ML")
 class Tag(models.Model):
     name = models.CharField(max_length=50, unique=True)
@@ -48,6 +58,12 @@ class Project(models.Model):
     author_name = models.CharField(max_length=100, blank=True)
     # Publish timestamp used for ordering
     published_date = models.DateTimeField(default=timezone.now)
+    slug = models.SlugField(max_length=120, unique=True, blank=True, null=True)
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = _generate_unique_slug(Project, self.title, instance_pk=self.pk, default_prefix='project')
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title
@@ -68,6 +84,12 @@ class BlogPost(models.Model):
     author_name = models.CharField(max_length=100, blank=True)
     # Publish timestamp used for ordering
     published_date = models.DateTimeField(default=timezone.now)
+    slug = models.SlugField(max_length=220, unique=True, blank=True, null=True)
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = _generate_unique_slug(BlogPost, self.title, instance_pk=self.pk, default_prefix='blog')
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title
@@ -95,6 +117,12 @@ class TeamMember(models.Model):
     instagram_url = models.URLField(blank=True, max_length=200)
     twitter_url = models.URLField(blank=True, max_length=200)
     website_url = models.URLField(blank=True, max_length=200)
+    slug = models.SlugField(max_length=120, unique=True, blank=True, null=True)
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = _generate_unique_slug(TeamMember, self.name, instance_pk=self.pk, default_prefix='member')
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
@@ -115,6 +143,12 @@ class Roadmap(models.Model):
     author_name = models.CharField(max_length=100, blank=True)
     # Publish timestamp used for ordering
     published_date = models.DateTimeField(default=timezone.now)
+    slug = models.SlugField(max_length=120, unique=True, blank=True, null=True)
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = _generate_unique_slug(Roadmap, self.title, instance_pk=self.pk, default_prefix='roadmap')
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title
@@ -162,6 +196,7 @@ class Event(models.Model):
     mode = models.CharField(max_length=10, choices=MODE_CHOICES, default=MODE_PHYSICAL)
     location_address = models.CharField(max_length=255, blank=True)
     meeting_link = models.URLField(blank=True, max_length=500)
+    slug = models.SlugField(max_length=170, unique=True, blank=True, null=True)
 
     def clean(self):
         super().clean()
@@ -177,6 +212,8 @@ class Event(models.Model):
             })
 
     def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = _generate_unique_slug(Event, self.title, instance_pk=self.pk, default_prefix='event')
         self.full_clean()
         super().save(*args, **kwargs)
 

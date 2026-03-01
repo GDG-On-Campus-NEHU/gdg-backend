@@ -164,6 +164,7 @@
                 container.innerHTML = blogs.map(blog => `
                     <div class="card">
                         <h3>${blog.title}</h3>
+                        <div class="meta">Detail: <code>/api/blog/${blog.slug || blog.id}/</code></div>
                         ${blog.image ? `<img src="${blog.image}" alt="${blog.title}">` : ''}
                         <p>${blog.summary}</p>
                         <div class="meta">
@@ -195,6 +196,7 @@
                 container.innerHTML = projects.map(project => `
                     <div class="card">
                         <h3>${project.title}</h3>
+                        <div class="meta">Detail: <code>/api/projects/${project.slug || project.id}/</code></div>
                         ${project.image ? `<img src="${project.image}" alt="${project.title}">` : ''}
                         <p>${project.description}</p>
                         <div class="meta">
@@ -226,6 +228,7 @@
                 container.innerHTML = roadmaps.map(roadmap => `
                     <div class="card">
                         <h3>${roadmap.icon_name} ${roadmap.title}</h3>
+                        <div class="meta">Detail: <code>/api/roadmaps/${roadmap.slug || roadmap.id}/</code></div>
                         <p>${roadmap.description}</p>
                         <div class="meta">
                             By ${roadmap.author_name} • ${new Date(roadmap.published_date).toLocaleDateString()}
@@ -253,6 +256,7 @@
                 container.innerHTML = events.map(event => `
                     <div class="card">
                         <h3>${event.title}</h3>
+                        <div class="meta">Detail: <code>/api/events/${event.slug || event.id}/</code></div>
                         ${event.image ? `<img src="${event.image}" alt="${event.title}">` : ''}
                         <p>${event.summary}</p>
                         <div class="meta">
@@ -285,6 +289,7 @@
                     <div class="card">
                         ${member.photo ? `<img src="${member.photo}" alt="${member.name}" style="border-radius: 50%; width: 100px; height: 100px; object-fit: cover;">` : ''}
                         <h3>${member.name}</h3>
+                        <div class="meta">Detail: <code>/api/team/${member.slug || member.id}/</code></div>
                         <p><strong>${member.role}</strong></p>
                         ${member.bio ? `<p>${member.bio}</p>` : ''}
 

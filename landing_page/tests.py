@@ -55,9 +55,20 @@ class BlogPostApiTests(TestCase):
             summary='Summary',
             content='<p>Body</p>',
         )
-        response = self.client.get(f'/api/blog/{post.id}/')
+        response = self.client.get(f'/api/blog/{post.slug}/')
         self.assertEqual(response.status_code, 200)
         self.assertIn('content', response.data)
+
+    def test_numeric_id_detail_route_fallback(self):
+        post = BlogPost.objects.create(
+            title='Legacy Post',
+            summary='Summary',
+            content='<p>Body</p>',
+        )
+        response = self.client.get(f'/api/blog/{post.id}/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['id'], post.id)
+        self.assertEqual(response.data['slug'], post.slug)
 
 
 class ProjectEventApiTests(TestCase):
@@ -131,8 +142,8 @@ class ProjectEventApiTests(TestCase):
         project = Project.objects.create(title='P', description='D', content='<p>Project body</p>')
         event = Event.objects.create(title='E', summary='S', content='<p>Event body</p>')
 
-        project_response = self.client.get(f'/api/projects/{project.id}/')
-        event_response = self.client.get(f'/api/events/{event.id}/')
+        project_response = self.client.get(f'/api/projects/{project.slug}/')
+        event_response = self.client.get(f'/api/events/{event.slug}/')
 
         self.assertEqual(project_response.status_code, 200)
         self.assertEqual(event_response.status_code, 200)
