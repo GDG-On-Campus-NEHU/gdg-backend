@@ -54,7 +54,7 @@ class ProjectBaseSerializer(TaggableSerializerMixin, serializers.ModelSerializer
 
     class Meta:
         model = Project
-        fields = ['id', 'title', 'description', 'image_url', 'tags', 'tag_ids', 'author_name', 'published_date']
+        fields = ['id', 'slug', 'title', 'description', 'image_url', 'tags', 'tag_ids', 'author_name', 'published_date']
 
 
 class ProjectListSerializer(ProjectBaseSerializer):
@@ -78,7 +78,7 @@ class BlogPostBaseSerializer(TaggableSerializerMixin, serializers.ModelSerialize
 
     class Meta:
         model = BlogPost
-        fields = ['id', 'title', 'summary', 'image_url', 'tags', 'tag_ids', 'author_name', 'published_date']
+        fields = ['id', 'slug', 'title', 'summary', 'image_url', 'tags', 'tag_ids', 'author_name', 'published_date']
 
 
 class BlogPostListSerializer(BlogPostBaseSerializer):
@@ -105,6 +105,7 @@ class TeamMemberBaseSerializer(TaggableSerializerMixin, serializers.ModelSeriali
         model = TeamMember
         fields = [
             'id',
+            'slug',
             'name',
             'role',
             'photo_url',
@@ -147,7 +148,7 @@ class RoadmapBaseSerializer(TaggableSerializerMixin, serializers.ModelSerializer
 
     class Meta:
         model = Roadmap
-        fields = ['id', 'icon_name', 'title', 'description', 'tags', 'tag_ids', 'author_name', 'published_date']
+        fields = ['id', 'slug', 'icon_name', 'title', 'description', 'tags', 'tag_ids', 'author_name', 'published_date']
 
 
 class RoadmapListSerializer(RoadmapBaseSerializer):
@@ -195,6 +196,7 @@ class EventBaseSerializer(TaggableSerializerMixin, serializers.ModelSerializer):
         model = Event
         fields = [
             'id',
+            'slug',
             'title',
             'summary',
             'image_url',
