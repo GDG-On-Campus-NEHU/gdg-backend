@@ -29,12 +29,17 @@ from .models import (
 )
 from .serializers import (
     BasicTagSerializer,
-    BlogPostSerializer,
-    EventSerializer,
-    ProjectSerializer,
-    RoadmapSerializer,
+    BlogPostDetailSerializer,
+    BlogPostListSerializer,
+    EventDetailSerializer,
+    EventListSerializer,
+    ProjectDetailSerializer,
+    ProjectListSerializer,
+    RoadmapDetailSerializer,
+    RoadmapListSerializer,
     TagSerializer,
-    TeamMemberSerializer,
+    TeamMemberDetailSerializer,
+    TeamMemberListSerializer,
 )
 
 VALID_TYPES = {'blogs', 'projects', 'events', 'roadmaps', 'team', 'all'}
@@ -313,7 +318,7 @@ def _build_bootstrap_payload():
         },
         'tags': TagSerializer(tags, many=True).data,
         'tags_popular': TagSerializer(tags_popular_payload, many=True).data,
-        'events': EventSerializer(events, many=True).data,
+        'events': EventListSerializer(events, many=True).data,
         'items_by_type': items_by_type,
     }
 
@@ -513,11 +518,11 @@ def global_search(request):
 
         return {
             'query': query,
-            'blogs': BlogPostSerializer(blogs, many=True).data,
-            'projects': ProjectSerializer(projects, many=True).data,
-            'team': TeamMemberSerializer(team, many=True).data,
-            'events': EventSerializer(events, many=True).data,
-            'roadmaps': RoadmapSerializer(roadmaps, many=True).data,
+            'blogs': BlogPostListSerializer(blogs, many=True).data,
+            'projects': ProjectListSerializer(projects, many=True).data,
+            'team': TeamMemberListSerializer(team, many=True).data,
+            'events': EventListSerializer(events, many=True).data,
+            'roadmaps': RoadmapListSerializer(roadmaps, many=True).data,
             'tags': TagSerializer(tags, many=True).data,
         }
 
@@ -550,33 +555,58 @@ class CachedReadRetrieveMixin:
 
 class ProjectViewSet(CachedReadRetrieveMixin, viewsets.ModelViewSet):
     queryset = Project.objects.all().order_by('-published_date')
-    serializer_class = ProjectSerializer
+    serializer_class = ProjectDetailSerializer
     permission_classes = [IsAdminUserOrReadOnly]
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return ProjectListSerializer
+        return ProjectDetailSerializer
 
 
 class BlogPostViewSet(CachedReadRetrieveMixin, viewsets.ModelViewSet):
     queryset = BlogPost.objects.all().order_by('-published_date')
-    serializer_class = BlogPostSerializer
+    serializer_class = BlogPostDetailSerializer
     permission_classes = [IsAdminUserOrReadOnly]
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return BlogPostListSerializer
+        return BlogPostDetailSerializer
 
 
 class TeamMemberViewSet(CachedReadRetrieveMixin, viewsets.ReadOnlyModelViewSet):
     queryset = TeamMember.objects.all().order_by('position_rank')
-    serializer_class = TeamMemberSerializer
+    serializer_class = TeamMemberDetailSerializer
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return TeamMemberListSerializer
+        return TeamMemberDetailSerializer
 
 
 class RoadmapViewSet(CachedReadRetrieveMixin, viewsets.ModelViewSet):
     queryset = Roadmap.objects.all().order_by('-published_date')
-    serializer_class = RoadmapSerializer
+    serializer_class = RoadmapDetailSerializer
     permission_classes = [IsAdminUserOrReadOnly]
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return RoadmapListSerializer
+        return RoadmapDetailSerializer
 
 
 class EventViewSet(CachedReadRetrieveMixin, viewsets.ModelViewSet):
     queryset = Event.objects.all().order_by('-event_date').prefetch_related(
         'tags', 'speakers', 'tech_tag_items', 'gallery_image_items', 'resource_items'
     )
-    serializer_class = EventSerializer
+    serializer_class = EventDetailSerializer
     permission_classes = [IsAdminUserOrReadOnly]
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return EventListSerializer
+        return EventDetailSerializer
 
 
 class TagViewSet(CachedReadRetrieveMixin, viewsets.ReadOnlyModelViewSet):

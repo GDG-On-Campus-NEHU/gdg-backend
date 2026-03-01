@@ -1,5 +1,6 @@
 from django.utils import timezone
 from rest_framework import serializers
+
 from .models import (
     Tag,
     Project,
@@ -25,7 +26,23 @@ class TagSerializer(BasicTagSerializer):
         fields = BasicTagSerializer.Meta.fields + ['count']
 
 
-class ProjectSerializer(serializers.ModelSerializer):
+class TaggableSerializerMixin:
+    def create(self, validated_data):
+        tags = validated_data.pop('tags', [])
+        instance = super().create(validated_data)
+        if tags:
+            instance.tags.set(tags)
+        return instance
+
+    def update(self, instance, validated_data):
+        tags = validated_data.pop('tags', None)
+        instance = super().update(instance, validated_data)
+        if tags is not None:
+            instance.tags.set(tags)
+        return instance
+
+
+class ProjectBaseSerializer(TaggableSerializerMixin, serializers.ModelSerializer):
     tags = BasicTagSerializer(many=True, read_only=True)
     tag_ids = serializers.PrimaryKeyRelatedField(
         many=True,
@@ -37,24 +54,19 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Project
-        fields = ['id', 'title', 'description', 'content', 'image_url', 'tags', 'tag_ids', 'author_name', 'published_date']
-
-    def create(self, validated_data):
-        tags = validated_data.pop('tags', [])
-        project = super().create(validated_data)
-        if tags:
-            project.tags.set(tags)
-        return project
-
-    def update(self, instance, validated_data):
-        tags = validated_data.pop('tags', None)
-        project = super().update(instance, validated_data)
-        if tags is not None:
-            project.tags.set(tags)
-        return project
+        fields = ['id', 'title', 'description', 'image_url', 'tags', 'tag_ids', 'author_name', 'published_date']
 
 
-class BlogPostSerializer(serializers.ModelSerializer):
+class ProjectListSerializer(ProjectBaseSerializer):
+    pass
+
+
+class ProjectDetailSerializer(ProjectBaseSerializer):
+    class Meta(ProjectBaseSerializer.Meta):
+        fields = ProjectBaseSerializer.Meta.fields + ['content']
+
+
+class BlogPostBaseSerializer(TaggableSerializerMixin, serializers.ModelSerializer):
     tags = BasicTagSerializer(many=True, read_only=True)
     tag_ids = serializers.PrimaryKeyRelatedField(
         many=True,
@@ -66,24 +78,19 @@ class BlogPostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BlogPost
-        fields = ['id', 'title', 'summary', 'content', 'image_url', 'tags', 'tag_ids', 'author_name', 'published_date']
-
-    def create(self, validated_data):
-        tags = validated_data.pop('tags', [])
-        blog = super().create(validated_data)
-        if tags:
-            blog.tags.set(tags)
-        return blog
-
-    def update(self, instance, validated_data):
-        tags = validated_data.pop('tags', None)
-        blog = super().update(instance, validated_data)
-        if tags is not None:
-            blog.tags.set(tags)
-        return blog
+        fields = ['id', 'title', 'summary', 'image_url', 'tags', 'tag_ids', 'author_name', 'published_date']
 
 
-class TeamMemberSerializer(serializers.ModelSerializer):
+class BlogPostListSerializer(BlogPostBaseSerializer):
+    pass
+
+
+class BlogPostDetailSerializer(BlogPostBaseSerializer):
+    class Meta(BlogPostBaseSerializer.Meta):
+        fields = BlogPostBaseSerializer.Meta.fields + ['content']
+
+
+class TeamMemberBaseSerializer(TaggableSerializerMixin, serializers.ModelSerializer):
     tags = BasicTagSerializer(many=True, read_only=True)
     tag_ids = serializers.PrimaryKeyRelatedField(
         many=True,
@@ -96,9 +103,22 @@ class TeamMemberSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TeamMember
-        fields = ['id', 'name', 'role', 'photo_url', 'bio', 'skills', 'skills_list',
-                  'tags', 'tag_ids', 'position_rank', 'github_url', 'linkedin_url',
-                  'instagram_url', 'twitter_url', 'website_url']
+        fields = [
+            'id',
+            'name',
+            'role',
+            'photo_url',
+            'skills',
+            'skills_list',
+            'tags',
+            'tag_ids',
+            'position_rank',
+            'github_url',
+            'linkedin_url',
+            'instagram_url',
+            'twitter_url',
+            'website_url',
+        ]
 
     def get_skills_list(self, obj):
         if obj.skills:
@@ -106,7 +126,16 @@ class TeamMemberSerializer(serializers.ModelSerializer):
         return []
 
 
-class RoadmapSerializer(serializers.ModelSerializer):
+class TeamMemberListSerializer(TeamMemberBaseSerializer):
+    pass
+
+
+class TeamMemberDetailSerializer(TeamMemberBaseSerializer):
+    class Meta(TeamMemberBaseSerializer.Meta):
+        fields = TeamMemberBaseSerializer.Meta.fields + ['bio']
+
+
+class RoadmapBaseSerializer(TaggableSerializerMixin, serializers.ModelSerializer):
     tags = BasicTagSerializer(many=True, read_only=True)
     tag_ids = serializers.PrimaryKeyRelatedField(
         many=True,
@@ -118,7 +147,16 @@ class RoadmapSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Roadmap
-        fields = ['id', 'icon_name', 'title', 'description', 'content', 'tags', 'tag_ids', 'author_name', 'published_date']
+        fields = ['id', 'icon_name', 'title', 'description', 'tags', 'tag_ids', 'author_name', 'published_date']
+
+
+class RoadmapListSerializer(RoadmapBaseSerializer):
+    pass
+
+
+class RoadmapDetailSerializer(RoadmapBaseSerializer):
+    class Meta(RoadmapBaseSerializer.Meta):
+        fields = RoadmapBaseSerializer.Meta.fields + ['content']
 
 
 class SpeakerSerializer(serializers.ModelSerializer):
@@ -133,9 +171,8 @@ class EventResourceSerializer(serializers.ModelSerializer):
         fields = ['label', 'url']
 
 
-class EventSerializer(serializers.ModelSerializer):
+class EventBaseSerializer(TaggableSerializerMixin, serializers.ModelSerializer):
     tags = BasicTagSerializer(many=True, read_only=True)
-    speakers = SpeakerSerializer(many=True, read_only=True)
     tag_ids = serializers.PrimaryKeyRelatedField(
         many=True,
         queryset=Tag.objects.all(),
@@ -143,6 +180,7 @@ class EventSerializer(serializers.ModelSerializer):
         source='tags',
         required=False,
     )
+    speakers = SpeakerSerializer(many=True, read_only=True)
     tech_tags = serializers.SlugRelatedField(
         many=True,
         read_only=True,
@@ -156,9 +194,25 @@ class EventSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
         fields = [
-            'id', 'title', 'summary', 'content', 'image_url', 'tags', 'tag_ids', 'author_name', 'event_date',
-            'requires_registration', 'registration_link', 'registration_deadline', 'registration_open',
-            'mode', 'location_address', 'meeting_link', 'tech_tags', 'speakers', 'gallery_images', 'resources'
+            'id',
+            'title',
+            'summary',
+            'image_url',
+            'tags',
+            'tag_ids',
+            'author_name',
+            'event_date',
+            'requires_registration',
+            'registration_link',
+            'registration_deadline',
+            'registration_open',
+            'mode',
+            'location_address',
+            'meeting_link',
+            'tech_tags',
+            'speakers',
+            'gallery_images',
+            'resources',
         ]
 
     def get_gallery_images(self, obj):
@@ -170,6 +224,36 @@ class EventSerializer(serializers.ModelSerializer):
         if not obj.registration_deadline:
             return bool(obj.registration_link)
         return timezone.now() <= obj.registration_deadline
+
+
+class EventListSerializer(EventBaseSerializer):
+    pass
+
+
+class EventDetailSerializer(EventBaseSerializer):
+    class Meta(EventBaseSerializer.Meta):
+        fields = EventBaseSerializer.Meta.fields + ['content']
+
+
+# Backward-compatible aliases used in aggregate endpoints.
+class ProjectSerializer(ProjectDetailSerializer):
+    pass
+
+
+class BlogPostSerializer(BlogPostDetailSerializer):
+    pass
+
+
+class TeamMemberSerializer(TeamMemberDetailSerializer):
+    pass
+
+
+class RoadmapSerializer(RoadmapDetailSerializer):
+    pass
+
+
+class EventSerializer(EventDetailSerializer):
+    pass
 
 
 class UnifiedItemSerializer(serializers.Serializer):
