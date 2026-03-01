@@ -116,10 +116,16 @@ class ResourceInline(admin.TabularInline):
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
     form = EventAdminForm
-    list_display = ('title', 'author_name', 'event_date', 'mode', 'requires_registration')
+    list_display = ('title', 'author_name', 'event_date', 'registration_deadline', 'mode', 'requires_registration')
     search_fields = ('title', 'summary', 'author_name', 'location_address', 'meeting_link', 'registration_link')
-    list_filter = ('event_date', 'mode', 'requires_registration', 'tags')
+    list_filter = ('event_date', 'registration_deadline', 'mode', 'requires_registration', 'tags')
     filter_horizontal = ('tags', 'speakers')
+    fieldsets = (
+        (None, {'fields': ('title', 'summary', 'content', 'image_url', 'author_name')}),
+        ('Schedule & Access', {'fields': ('event_date', 'registration_deadline', 'requires_registration', 'registration_link')}),
+        ('Venue', {'fields': ('mode', 'location_address', 'meeting_link')}),
+        ('Relations', {'fields': ('tags', 'speakers')}),
+    )
     inlines = (TechTagInline, GalleryImageInline, ResourceInline)
 
 

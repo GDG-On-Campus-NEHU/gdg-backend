@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework import serializers
 from .models import (
     Tag,
@@ -150,17 +151,25 @@ class EventSerializer(serializers.ModelSerializer):
     )
     gallery_images = serializers.SerializerMethodField()
     resources = EventResourceSerializer(many=True, read_only=True, source='resource_items')
+    registration_open = serializers.SerializerMethodField()
 
     class Meta:
         model = Event
         fields = [
             'id', 'title', 'summary', 'content', 'image_url', 'tags', 'tag_ids', 'author_name', 'event_date',
-            'requires_registration', 'registration_link', 'mode', 'location_address', 'meeting_link',
-            'tech_tags', 'speakers', 'gallery_images', 'resources'
+            'requires_registration', 'registration_link', 'registration_deadline', 'registration_open',
+            'mode', 'location_address', 'meeting_link', 'tech_tags', 'speakers', 'gallery_images', 'resources'
         ]
 
     def get_gallery_images(self, obj):
         return [image.image_url for image in obj.gallery_image_items.all()]
+
+    def get_registration_open(self, obj):
+        if not obj.requires_registration:
+            return False
+        if not obj.registration_deadline:
+            return bool(obj.registration_link)
+        return timezone.now() <= obj.registration_deadline
 
 
 class UnifiedItemSerializer(serializers.Serializer):

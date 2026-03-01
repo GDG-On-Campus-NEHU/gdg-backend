@@ -1,5 +1,6 @@
 from django.db import models
 from django.core.cache import cache
+from django.core.exceptions import ValidationError
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django.utils import timezone
@@ -157,9 +158,27 @@ class Event(models.Model):
     speakers = models.ManyToManyField(Speaker, blank=True, related_name='events')
     requires_registration = models.BooleanField(default=True)
     registration_link = models.URLField(blank=True, null=True, max_length=500)
+    registration_deadline = models.DateTimeField(blank=True, null=True)
     mode = models.CharField(max_length=10, choices=MODE_CHOICES, default=MODE_PHYSICAL)
     location_address = models.CharField(max_length=255, blank=True)
     meeting_link = models.URLField(blank=True, max_length=500)
+
+    def clean(self):
+        super().clean()
+
+        if self.requires_registration and self.registration_link and not self.registration_deadline:
+            raise ValidationError({
+                'registration_deadline': 'Registration deadline is required when registration is enabled and a registration link is provided.'
+            })
+
+        if self.registration_deadline and self.event_date and self.registration_deadline > self.event_date:
+            raise ValidationError({
+                'registration_deadline': 'Registration deadline must be on or before the event date.'
+            })
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title
