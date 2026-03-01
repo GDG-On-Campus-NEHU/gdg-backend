@@ -48,8 +48,13 @@ Fields:
 
 Fields include:
 - Core: `id`, `title`, `summary`, `content`, `image_url`, `author_name`, `event_date`
-- Registration/mode: `requires_registration`, `registration_link`, `mode`, `location_address`, `meeting_link`
+- Registration/mode: `requires_registration`, `registration_link`, `registration_deadline`, `registration_open`, `mode`, `location_address`, `meeting_link`
 - Relations: `tags`, `tag_ids` (write), `tech_tags`, `speakers`, `gallery_images`, `resources`
+
+Event validation behavior:
+- If `requires_registration=true` and `registration_link` is provided, `registration_deadline` is required.
+- When both `registration_deadline` and `event_date` are present, `registration_deadline` must be less than or equal to `event_date`.
+- `registration_open` is a computed read-only boolean: true when registration is required and still open by deadline (or when a registration link exists with no deadline).
 
 ### Roadmaps
 
