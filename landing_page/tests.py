@@ -38,7 +38,7 @@ class BlogPostApiTests(TestCase):
         response = self.client.post('/api/blog/', payload, format='json')
         self.assertIn(response.status_code, {401, 403})
 
-    def test_blog_post_list_includes_content(self):
+    def test_blog_post_list_excludes_content(self):
         post = BlogPost.objects.create(
             title='Post',
             summary='Summary',
@@ -47,7 +47,17 @@ class BlogPostApiTests(TestCase):
         post.tags.add(self.tag)
         response = self.client.get('/api/blog/')
         self.assertEqual(response.status_code, 200)
-        self.assertIn('content', response.data[0])
+        self.assertNotIn('content', response.data[0])
+
+    def test_blog_post_detail_includes_content(self):
+        post = BlogPost.objects.create(
+            title='Post',
+            summary='Summary',
+            content='<p>Body</p>',
+        )
+        response = self.client.get(f'/api/blog/{post.id}/')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('content', response.data)
 
 
 class ProjectEventApiTests(TestCase):
@@ -105,6 +115,30 @@ class ProjectEventApiTests(TestCase):
         self.assertIn(project_response.status_code, {401, 403})
         self.assertIn(event_response.status_code, {401, 403})
 
+    def test_project_event_list_excludes_content(self):
+        Project.objects.create(title='P', description='D', content='<p>Project body</p>')
+        Event.objects.create(title='E', summary='S', content='<p>Event body</p>')
+
+        project_response = self.client.get('/api/projects/')
+        event_response = self.client.get('/api/events/')
+
+        self.assertEqual(project_response.status_code, 200)
+        self.assertEqual(event_response.status_code, 200)
+        self.assertNotIn('content', project_response.data[0])
+        self.assertNotIn('content', event_response.data[0])
+
+    def test_project_event_detail_include_content(self):
+        project = Project.objects.create(title='P', description='D', content='<p>Project body</p>')
+        event = Event.objects.create(title='E', summary='S', content='<p>Event body</p>')
+
+        project_response = self.client.get(f'/api/projects/{project.id}/')
+        event_response = self.client.get(f'/api/events/{event.id}/')
+
+        self.assertEqual(project_response.status_code, 200)
+        self.assertEqual(event_response.status_code, 200)
+        self.assertIn('content', project_response.data)
+        self.assertIn('content', event_response.data)
+
 
 class TagAndItemsApiTests(TestCase):
     def setUp(self):
@@ -143,6 +177,23 @@ class TagAndItemsApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['tag']['name'], 'Raspberry Pi')
         self.assertEqual(response.data['pagination']['total'], 1)
+
+    def test_bootstrap_and_search_use_summary_payloads(self):
+        bootstrap_response = self.client.get('/api/bootstrap/')
+        self.assertEqual(bootstrap_response.status_code, 200)
+        self.assertTrue(bootstrap_response.data['events'])
+        self.assertNotIn('content', bootstrap_response.data['events'][0])
+
+        search_response = self.client.get('/api/search/?q=pi')
+        self.assertEqual(search_response.status_code, 200)
+        self.assertTrue(search_response.data['events'])
+        self.assertNotIn('content', search_response.data['events'][0])
+        if search_response.data['blogs']:
+            self.assertNotIn('content', search_response.data['blogs'][0])
+        if search_response.data['projects']:
+            self.assertNotIn('content', search_response.data['projects'][0])
+        if search_response.data['roadmaps']:
+            self.assertNotIn('content', search_response.data['roadmaps'][0])
 
 
 class RichTextNormalizationTests(TestCase):
