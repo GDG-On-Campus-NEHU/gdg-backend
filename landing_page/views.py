@@ -3,12 +3,9 @@ import threading
 
 from django.conf import settings
 from django.core.cache import cache
-from django.db.models import Q, Count
-from django.utils import timezone
-from django.utils.text import slugify
-from django.core.paginator import Paginator
 from django.db import close_old_connections
 from django.db.models import Count, Q
+from django.core.paginator import Paginator
 from django.utils import timezone
 from django.utils.text import slugify
 from rest_framework import viewsets
@@ -51,6 +48,36 @@ API_CACHE_ENABLED = getattr(settings, 'API_RESPONSE_CACHE_ENABLED', True)
 API_CACHE_SOFT_TTL_SECONDS = getattr(settings, 'API_CACHE_SOFT_TTL_SECONDS', 5 * 60)
 API_CACHE_HARD_TTL_SECONDS = getattr(settings, 'API_CACHE_HARD_TTL_SECONDS', 60 * 60)
 API_CACHE_LOCK_TIMEOUT_SECONDS = getattr(settings, 'API_CACHE_LOCK_TIMEOUT_SECONDS', 60)
+
+
+
+SLUG_LOOKUP_REGEX = r'[-a-zA-Z0-9_]+'
+
+
+class SlugOrIdLookupMixin:
+    lookup_field = 'slug'
+    lookup_value_regex = SLUG_LOOKUP_REGEX
+
+    def get_object(self):
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+        lookup_value = self.kwargs.get(lookup_url_kwarg)
+
+        queryset = self.filter_queryset(self.get_queryset())
+        if lookup_value is None:
+            return super().get_object()
+
+        slug_object = queryset.filter(**{self.lookup_field: lookup_value}).first()
+        if slug_object:
+            self.check_object_permissions(self.request, slug_object)
+            return slug_object
+
+        if str(lookup_value).isdigit():
+            id_object = queryset.filter(pk=int(lookup_value)).first()
+            if id_object:
+                self.check_object_permissions(self.request, id_object)
+                return id_object
+
+        return super().get_object()
 
 
 class IsAdminUserOrReadOnly(BasePermission):
@@ -144,6 +171,7 @@ def _serialize_item(obj, item_type):
 
     payload = {
         'id': obj.id,
+        'slug': getattr(obj, 'slug', None),
         'type': item_type,
         'title': getattr(obj, 'title', None) or getattr(obj, 'name', ''),
         'summary': summary or '',
@@ -553,7 +581,7 @@ class CachedReadRetrieveMixin:
         return Response(payload)
 
 
-class ProjectViewSet(CachedReadRetrieveMixin, viewsets.ModelViewSet):
+class ProjectViewSet(SlugOrIdLookupMixin, CachedReadRetrieveMixin, viewsets.ModelViewSet):
     queryset = Project.objects.all().order_by('-published_date')
     serializer_class = ProjectDetailSerializer
     permission_classes = [IsAdminUserOrReadOnly]
@@ -564,7 +592,7 @@ class ProjectViewSet(CachedReadRetrieveMixin, viewsets.ModelViewSet):
         return ProjectDetailSerializer
 
 
-class BlogPostViewSet(CachedReadRetrieveMixin, viewsets.ModelViewSet):
+class BlogPostViewSet(SlugOrIdLookupMixin, CachedReadRetrieveMixin, viewsets.ModelViewSet):
     queryset = BlogPost.objects.all().order_by('-published_date')
     serializer_class = BlogPostDetailSerializer
     permission_classes = [IsAdminUserOrReadOnly]
@@ -575,7 +603,7 @@ class BlogPostViewSet(CachedReadRetrieveMixin, viewsets.ModelViewSet):
         return BlogPostDetailSerializer
 
 
-class TeamMemberViewSet(CachedReadRetrieveMixin, viewsets.ReadOnlyModelViewSet):
+class TeamMemberViewSet(SlugOrIdLookupMixin, CachedReadRetrieveMixin, viewsets.ReadOnlyModelViewSet):
     queryset = TeamMember.objects.all().order_by('position_rank')
     serializer_class = TeamMemberDetailSerializer
 
@@ -585,7 +613,7 @@ class TeamMemberViewSet(CachedReadRetrieveMixin, viewsets.ReadOnlyModelViewSet):
         return TeamMemberDetailSerializer
 
 
-class RoadmapViewSet(CachedReadRetrieveMixin, viewsets.ModelViewSet):
+class RoadmapViewSet(SlugOrIdLookupMixin, CachedReadRetrieveMixin, viewsets.ModelViewSet):
     queryset = Roadmap.objects.all().order_by('-published_date')
     serializer_class = RoadmapDetailSerializer
     permission_classes = [IsAdminUserOrReadOnly]
@@ -596,7 +624,7 @@ class RoadmapViewSet(CachedReadRetrieveMixin, viewsets.ModelViewSet):
         return RoadmapDetailSerializer
 
 
-class EventViewSet(CachedReadRetrieveMixin, viewsets.ModelViewSet):
+class EventViewSet(SlugOrIdLookupMixin, CachedReadRetrieveMixin, viewsets.ModelViewSet):
     queryset = Event.objects.all().order_by('-event_date').prefetch_related(
         'tags', 'speakers', 'tech_tag_items', 'gallery_image_items', 'resource_items'
     )
