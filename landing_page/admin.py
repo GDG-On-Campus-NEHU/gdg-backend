@@ -17,6 +17,7 @@ def rich_text_widget():
 from .models import (
     Tag,
     Project,
+    ProjectContributor,
     BlogPost,
     TeamMember,
     Roadmap,
@@ -44,12 +45,32 @@ class ProjectAdminForm(forms.ModelForm):
         fields = '__all__'
 
 
+class ProjectContributorInline(admin.StackedInline):
+    model = ProjectContributor
+    extra = 1
+    fields = (
+        'name',
+        'role_type',
+        'photo_url',
+        'github_url',
+        'linkedin_url',
+        'website_url',
+        'order',
+    )
+
+
 @admin.register(Project)
 class ProjectAdmin(admin.ModelAdmin):
     form = ProjectAdminForm
-    list_display = ('title', 'author_name', 'published_date')
-    search_fields = ('title', 'description', 'author_name')
-    list_filter = ('published_date', 'tags')
+    list_display = ('title', 'author_name', 'status', 'is_open_source', 'published_date')
+    search_fields = ('title', 'description', 'author_name', 'contributors__name')
+    list_filter = ('published_date', 'tags', 'is_open_source', 'status')
+    inlines = (ProjectContributorInline,)
+    fieldsets = (
+        (None, {'fields': ('title', 'slug', 'description', 'content', 'image_url')}),
+        ('Meta', {'fields': ('author_name', 'published_date', 'tags')}),
+        ('Links & Status', {'fields': ('is_open_source', 'status', 'repo_url', 'demo_url')}),
+    )
 
 
 class BlogPostAdminForm(forms.ModelForm):
