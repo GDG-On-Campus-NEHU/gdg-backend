@@ -11,12 +11,28 @@ try:
 except ImportError:  # fallback for environments without CKEditor
     CKEditor5Field = models.TextField
 
+PROJECT_STATUS_IDEA = 'idea'
+PROJECT_STATUS_IN_PROGRESS = 'in_progress'
+PROJECT_STATUS_COMPLETED = 'completed'
+PROJECT_STATUS_ARCHIVED = 'archived'
+PROJECT_STATUS_CHOICES = [
+    (PROJECT_STATUS_IDEA, 'Idea'),
+    (PROJECT_STATUS_IN_PROGRESS, 'In Progress'),
+    (PROJECT_STATUS_COMPLETED, 'Completed'),
+    (PROJECT_STATUS_ARCHIVED, 'Archived'),
+]
 
-def _generate_unique_slug(model_cls, source_value, instance_pk=None, default_prefix='item'):
+
+def _generate_unique_slug(model_cls, source_value, instance_pk=None, default_prefix='item', extra_filters=None):
     base_slug = slugify(source_value) or default_prefix
     candidate = base_slug
     suffix = 1
-    while model_cls.objects.exclude(pk=instance_pk).filter(slug=candidate).exists():
+    queryset = model_cls.objects.all()
+    if instance_pk:
+        queryset = queryset.exclude(pk=instance_pk)
+    if extra_filters:
+        queryset = queryset.filter(**extra_filters)
+    while queryset.filter(slug=candidate).exists():
         candidate = f"{base_slug}-{suffix}"
         suffix += 1
     return candidate
@@ -52,6 +68,10 @@ class Project(models.Model):
     content = CKEditor5Field('Text', config_name='default', blank=True)
     # External image URL (e.g., Imgur, Cloudinary) - saves server storage
     image_url = models.URLField(blank=True, max_length=500, help_text="URL to externally hosted image (e.g., Imgur)")
+    is_open_source = models.BooleanField(default=False)
+    status = models.CharField(max_length=20, choices=PROJECT_STATUS_CHOICES, default=PROJECT_STATUS_IDEA)
+    repo_url = models.URLField(blank=True, max_length=500)
+    demo_url = models.URLField(blank=True, max_length=500)
     # Optional tags for filtering
     tags = models.ManyToManyField(Tag, blank=True)
     # Optional author attribution
@@ -67,6 +87,23 @@ class Project(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class ProjectContributor(models.Model):
+    project = models.ForeignKey(Project, related_name='contributors', on_delete=models.CASCADE)
+    name = models.CharField(max_length=150)
+    role_type = models.CharField(max_length=120, blank=True)
+    photo_url = models.URLField(blank=True, max_length=500)
+    github_url = models.URLField(blank=True, max_length=500)
+    linkedin_url = models.URLField(blank=True, max_length=500)
+    website_url = models.URLField(blank=True, max_length=500)
+    order = models.PositiveIntegerField(default=100)
+
+    class Meta:
+        ordering = ('order', 'name')
+
+    def __str__(self):
+        return f"{self.name} – {self.project.title}"
 
 # Model for the Latest Blogs section
 class BlogPost(models.Model):
@@ -282,6 +319,8 @@ def warm_tag_event_cache():
 @receiver(post_delete, sender=Roadmap)
 @receiver(post_save, sender=TeamMember)
 @receiver(post_delete, sender=TeamMember)
+@receiver(post_save, sender=ProjectContributor)
+@receiver(post_delete, sender=ProjectContributor)
 def refresh_tag_event_cache_on_change(**kwargs):
     # Phase 2: avoid expensive synchronous cache rebuilds on writes.
     # Invalidate hot keys cheaply and let reads/cron repopulate.

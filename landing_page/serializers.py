@@ -4,6 +4,7 @@ from rest_framework import serializers
 from .models import (
     Tag,
     Project,
+    ProjectContributor,
     BlogPost,
     TeamMember,
     Roadmap,
@@ -42,6 +43,22 @@ class TaggableSerializerMixin:
         return instance
 
 
+class ProjectContributorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProjectContributor
+        fields = [
+            'id',
+            'name',
+            'role_type',
+            'photo_url',
+            'github_url',
+            'linkedin_url',
+            'website_url',
+            'order',
+        ]
+        read_only_fields = ['id']
+
+
 class ProjectBaseSerializer(TaggableSerializerMixin, serializers.ModelSerializer):
     tags = BasicTagSerializer(many=True, read_only=True)
     tag_ids = serializers.PrimaryKeyRelatedField(
@@ -51,10 +68,54 @@ class ProjectBaseSerializer(TaggableSerializerMixin, serializers.ModelSerializer
         source='tags',
         required=False,
     )
+    contributors = ProjectContributorSerializer(many=True, required=False)
 
     class Meta:
         model = Project
-        fields = ['id', 'slug', 'title', 'description', 'image_url', 'tags', 'tag_ids', 'author_name', 'published_date']
+        fields = [
+            'id',
+            'slug',
+            'title',
+            'description',
+            'image_url',
+            'is_open_source',
+            'status',
+            'repo_url',
+            'demo_url',
+            'tags',
+            'tag_ids',
+            'author_name',
+            'published_date',
+        ]
+
+    def _replace_contributors(self, project, contributors_data):
+        if contributors_data is None:
+            return
+        project.contributors.all().delete()
+        for index, payload in enumerate(contributors_data):
+            defaults = {
+                'name': payload.get('name', '').strip(),
+                'role_type': payload.get('role_type', '').strip(),
+                'photo_url': payload.get('photo_url', ''),
+                'github_url': payload.get('github_url', ''),
+                'linkedin_url': payload.get('linkedin_url', ''),
+                'website_url': payload.get('website_url', ''),
+                'order': payload.get('order', index + 1),
+            }
+            ProjectContributor.objects.create(project=project, **defaults)
+
+    def create(self, validated_data):
+        contributors_data = validated_data.pop('contributors', [])
+        project = super().create(validated_data)
+        self._replace_contributors(project, contributors_data)
+        return project
+
+    def update(self, instance, validated_data):
+        contributors_data = validated_data.pop('contributors', None)
+        project = super().update(instance, validated_data)
+        if contributors_data is not None:
+            self._replace_contributors(project, contributors_data)
+        return project
 
 
 class ProjectListSerializer(ProjectBaseSerializer):
@@ -63,7 +124,7 @@ class ProjectListSerializer(ProjectBaseSerializer):
 
 class ProjectDetailSerializer(ProjectBaseSerializer):
     class Meta(ProjectBaseSerializer.Meta):
-        fields = ProjectBaseSerializer.Meta.fields + ['content']
+        fields = ProjectBaseSerializer.Meta.fields + ['content', 'contributors']
 
 
 class BlogPostBaseSerializer(TaggableSerializerMixin, serializers.ModelSerializer):

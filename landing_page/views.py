@@ -193,7 +193,7 @@ def _get_base_queryset(item_type):
     if item_type == 'blogs':
         return BlogPost.objects.prefetch_related('tags').all(), 'published_date'
     if item_type == 'projects':
-        return Project.objects.prefetch_related('tags').all(), 'published_date'
+        return Project.objects.prefetch_related('tags', 'contributors').all(), 'published_date'
     if item_type == 'events':
         return Event.objects.prefetch_related('tags').all(), 'event_date'
     if item_type == 'roadmaps':
@@ -520,7 +520,7 @@ def global_search(request):
             Q(description__icontains=query) |
             Q(content__icontains=query) |
             Q(author_name__icontains=query)
-        ).order_by('-published_date')[:10]
+        ).prefetch_related('tags', 'publishers', 'contributors').order_by('-published_date')[:10]
 
         team = TeamMember.objects.filter(
             Q(name__icontains=query) |
@@ -582,7 +582,7 @@ class CachedReadRetrieveMixin:
 
 
 class ProjectViewSet(SlugOrIdLookupMixin, CachedReadRetrieveMixin, viewsets.ModelViewSet):
-    queryset = Project.objects.all().order_by('-published_date')
+    queryset = Project.objects.all().prefetch_related('tags', 'contributors').order_by('-published_date')
     serializer_class = ProjectDetailSerializer
     permission_classes = [IsAdminUserOrReadOnly]
 
