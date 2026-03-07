@@ -6,6 +6,7 @@ from .models import (
     Project,
     ProjectContributor,
     BlogPost,
+    BlogAuthor,
     TeamMember,
     Roadmap,
     Event,
@@ -127,6 +128,26 @@ class ProjectDetailSerializer(ProjectBaseSerializer):
         fields = ProjectBaseSerializer.Meta.fields + ['content', 'contributors']
 
 
+class BlogAuthorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BlogAuthor
+        fields = [
+            'id',
+            'name',
+            'photo_url',
+            'bio',
+            'github_url',
+            'linkedin_url',
+            'instagram_url',
+            'website_url',
+        ]
+
+
+class BlogAuthorWriteSerializer(serializers.PrimaryKeyRelatedField):
+    def __init__(self, **kwargs):
+        super().__init__(queryset=BlogAuthor.objects.all(), many=True, **kwargs)
+
+
 class BlogPostBaseSerializer(TaggableSerializerMixin, serializers.ModelSerializer):
     tags = BasicTagSerializer(many=True, read_only=True)
     tag_ids = serializers.PrimaryKeyRelatedField(
@@ -136,10 +157,22 @@ class BlogPostBaseSerializer(TaggableSerializerMixin, serializers.ModelSerialize
         source='tags',
         required=False,
     )
+    author_ids = BlogAuthorWriteSerializer(write_only=True, source='authors', required=False)
 
     class Meta:
         model = BlogPost
-        fields = ['id', 'slug', 'title', 'summary', 'image_url', 'tags', 'tag_ids', 'author_name', 'published_date']
+        fields = [
+            'id',
+            'slug',
+            'title',
+            'summary',
+            'image_url',
+            'tags',
+            'tag_ids',
+            'author_name',
+            'author_ids',
+            'published_date',
+        ]
 
 
 class BlogPostListSerializer(BlogPostBaseSerializer):
@@ -147,8 +180,10 @@ class BlogPostListSerializer(BlogPostBaseSerializer):
 
 
 class BlogPostDetailSerializer(BlogPostBaseSerializer):
+    authors = BlogAuthorSerializer(many=True, read_only=True)
+
     class Meta(BlogPostBaseSerializer.Meta):
-        fields = BlogPostBaseSerializer.Meta.fields + ['content']
+        fields = BlogPostBaseSerializer.Meta.fields + ['content', 'authors']
 
 
 class TeamMemberBaseSerializer(TaggableSerializerMixin, serializers.ModelSerializer):

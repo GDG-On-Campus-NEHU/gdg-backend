@@ -36,15 +36,18 @@ class Command(BaseCommand):
             if slug:
                 paths.append(f'/api/tags/{slug}/?type=blogs&page=1&per_page=20&sort=recent')
 
-        for obj in Project.objects.all()[:200]:
+        for obj in Project.objects.all().order_by('-published_date')[:5]:
             paths.append(f'/api/projects/{obj.id}/')
-        for obj in BlogPost.objects.all()[:200]:
-            paths.append(f'/api/blog/{obj.id}/')
-        for obj in TeamMember.objects.all()[:200]:
+        for obj in BlogPost.objects.all().order_by('-published_date')[:5]:
+            if obj.slug:
+                paths.append(f'/api/blog/{obj.slug}/')
+            else:
+                paths.append(f'/api/blog/{obj.id}/')
+        for obj in TeamMember.objects.all().order_by('position_rank')[:200]:
             paths.append(f'/api/team/{obj.id}/')
-        for obj in Roadmap.objects.all()[:200]:
+        for obj in Roadmap.objects.all().order_by('-published_date')[:5]:
             paths.append(f'/api/roadmaps/{obj.id}/')
-        for obj in Event.objects.all()[:200]:
+        for obj in Event.objects.all().order_by('-event_date')[:5]:
             paths.append(f'/api/events/{obj.id}/')
 
         return paths
