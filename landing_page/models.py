@@ -106,6 +106,22 @@ class ProjectContributor(models.Model):
         return f"{self.name} – {self.project.title}"
 
 # Model for the Latest Blogs section
+class BlogAuthor(models.Model):
+    name = models.CharField(max_length=100)
+    photo_url = models.URLField(blank=True, max_length=500)
+    bio = models.TextField(blank=True)
+    github_url = models.URLField(blank=True, max_length=500)
+    linkedin_url = models.URLField(blank=True, max_length=500)
+    instagram_url = models.URLField(blank=True, max_length=500)
+    website_url = models.URLField(blank=True, max_length=500)
+
+    class Meta:
+        ordering = ('name',)
+
+    def __str__(self):
+        return self.name
+
+
 class BlogPost(models.Model):
     # Title shown in lists and page header
     title = models.CharField(max_length=200)
@@ -119,6 +135,7 @@ class BlogPost(models.Model):
     tags = models.ManyToManyField(Tag, blank=True)
     # Optional author attribution
     author_name = models.CharField(max_length=100, blank=True)
+    authors = models.ManyToManyField(BlogAuthor, blank=True, related_name='blog_posts')
     # Publish timestamp used for ordering
     published_date = models.DateTimeField(default=timezone.now)
     slug = models.SlugField(max_length=220, unique=True, blank=True, null=True)
@@ -291,20 +308,50 @@ API_CACHE_GENERATION_KEY = 'api:cache:generation'
 
 
 def warm_tag_event_cache():
-    from .serializers import EventSerializer, TagSerializer
+    from .serializers import (
+        BlogPostDetailSerializer,
+        BlogPostListSerializer,
+        EventDetailSerializer,
+        EventListSerializer,
+        ProjectDetailSerializer,
+        ProjectListSerializer,
+        RoadmapDetailSerializer,
+        RoadmapListSerializer,
+        TagSerializer,
+        TeamMemberListSerializer,
+    )
 
     tags = list(Tag.objects.all().order_by('name'))
+    cache.set(TAG_CACHE_KEY, {'tags': TagSerializer(tags, many=True).data}, CACHE_TIMEOUT_SECONDS)
+
     events = list(
         Event.objects.all()
         .order_by('-event_date')
-        .prefetch_related('tags', 'speakers', 'tech_tag_items', 'gallery_image_items', 'resource_items')
+        .prefetch_related('tags', 'speakers', 'tech_tag_items', 'gallery_image_items', 'resource_items')[:5]
     )
-
-    cache.set(TAG_CACHE_KEY, {'tags': TagSerializer(tags, many=True).data}, CACHE_TIMEOUT_SECONDS)
-    cache.set(EVENTS_LIST_CACHE_KEY, EventSerializer(events, many=True).data, CACHE_TIMEOUT_SECONDS)
-
+    cache.set(EVENTS_LIST_CACHE_KEY, EventListSerializer(events, many=True).data, CACHE_TIMEOUT_SECONDS)
     for event in events:
-        cache.set(f'events:detail:{event.id}', EventSerializer(event).data, CACHE_TIMEOUT_SECONDS)
+        cache.set(f'events:detail:{event.id}', EventDetailSerializer(event).data, CACHE_TIMEOUT_SECONDS)
+
+    blogs = list(BlogPost.objects.all().order_by('-published_date').prefetch_related('tags', 'authors')[:5])
+    cache.set('blogs:list', BlogPostListSerializer(blogs, many=True).data, CACHE_TIMEOUT_SECONDS)
+    for blog in blogs:
+        cache.set(f'blogs:detail:{blog.id}', BlogPostDetailSerializer(blog).data, CACHE_TIMEOUT_SECONDS)
+        if blog.slug:
+            cache.set(f'blogs:detail:slug:{blog.slug}', BlogPostDetailSerializer(blog).data, CACHE_TIMEOUT_SECONDS)
+
+    projects = list(Project.objects.all().order_by('-published_date').prefetch_related('tags', 'contributors')[:5])
+    cache.set('projects:list', ProjectListSerializer(projects, many=True).data, CACHE_TIMEOUT_SECONDS)
+    for project in projects:
+        cache.set(f'projects:detail:{project.id}', ProjectDetailSerializer(project).data, CACHE_TIMEOUT_SECONDS)
+
+    roadmaps = list(Roadmap.objects.all().order_by('-published_date').prefetch_related('tags')[:5])
+    cache.set('roadmaps:list', RoadmapListSerializer(roadmaps, many=True).data, CACHE_TIMEOUT_SECONDS)
+    for roadmap in roadmaps:
+        cache.set(f'roadmaps:detail:{roadmap.id}', RoadmapDetailSerializer(roadmap).data, CACHE_TIMEOUT_SECONDS)
+
+    team_members = list(TeamMember.objects.all().order_by('position_rank').prefetch_related('tags'))
+    cache.set('team:list', TeamMemberListSerializer(team_members, many=True).data, CACHE_TIMEOUT_SECONDS)
 
 
 @receiver(post_save, sender=Tag)
@@ -321,6 +368,8 @@ def warm_tag_event_cache():
 @receiver(post_delete, sender=TeamMember)
 @receiver(post_save, sender=ProjectContributor)
 @receiver(post_delete, sender=ProjectContributor)
+@receiver(post_save, sender=BlogAuthor)
+@receiver(post_delete, sender=BlogAuthor)
 def refresh_tag_event_cache_on_change(**kwargs):
     # Phase 2: avoid expensive synchronous cache rebuilds on writes.
     # Invalidate hot keys cheaply and let reads/cron repopulate.
