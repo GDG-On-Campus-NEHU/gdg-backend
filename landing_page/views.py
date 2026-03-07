@@ -593,7 +593,7 @@ class ProjectViewSet(SlugOrIdLookupMixin, CachedReadRetrieveMixin, viewsets.Mode
 
 
 class BlogPostViewSet(SlugOrIdLookupMixin, CachedReadRetrieveMixin, viewsets.ModelViewSet):
-    queryset = BlogPost.objects.all().order_by('-published_date')
+    queryset = BlogPost.objects.all().order_by('-published_date').prefetch_related('tags', 'authors')
     serializer_class = BlogPostDetailSerializer
     permission_classes = [IsAdminUserOrReadOnly]
 

@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
 from .management.commands.normalize_richtext_html import normalize_html
-from .models import Tag, BlogPost, Project, Event, Roadmap, TeamMember
+from .models import Tag, BlogPost, Project, Event, Roadmap, TeamMember, BlogAuthor
 
 
 class BlogPostApiTests(TestCase):
@@ -48,16 +48,53 @@ class BlogPostApiTests(TestCase):
         response = self.client.get('/api/blog/')
         self.assertEqual(response.status_code, 200)
         self.assertNotIn('content', response.data[0])
+        self.assertNotIn('authors', response.data[0])
 
     def test_blog_post_detail_includes_content(self):
+        author = BlogAuthor.objects.create(
+            name='R. K. Shaw',
+            photo_url='https://example.com/rk.jpg',
+            short_bio='Core contributor',
+            github_url='https://github.com/rk',
+            linkedin_url='https://linkedin.com/in/rk',
+            instagram_url='https://instagram.com/rk',
+            website_url='https://rk.example.com',
+        )
         post = BlogPost.objects.create(
             title='Post',
             summary='Summary',
             content='<p>Body</p>',
+            author_name='R. K. Shaw',
         )
+        post.authors.add(author)
+
         response = self.client.get(f'/api/blog/{post.slug}/')
         self.assertEqual(response.status_code, 200)
         self.assertIn('content', response.data)
+        self.assertIn('authors', response.data)
+        self.assertEqual(len(response.data['authors']), 1)
+        self.assertEqual(response.data['authors'][0]['id'], author.id)
+        self.assertEqual(response.data['authors'][0]['name'], 'R. K. Shaw')
+        self.assertEqual(response.data['authors'][0]['website_url'], 'https://rk.example.com')
+
+    def test_create_blog_post_with_author_ids_keeps_author_name(self):
+        self.client.force_authenticate(user=self.admin_user)
+        author_1 = BlogAuthor.objects.create(name='R. K. Shaw')
+        author_2 = BlogAuthor.objects.create(name='S. S. Kashyap')
+
+        payload = {
+            'title': 'Post with Authors',
+            'summary': 'Short summary',
+            'content': '<p><strong>Hello</strong> world</p>',
+            'author_name': 'R. K. Shaw, S. S. Kashyap',
+            'author_ids': [author_1.id, author_2.id],
+        }
+        response = self.client.post('/api/blog/', payload, format='json')
+        self.assertEqual(response.status_code, 201)
+
+        blog = BlogPost.objects.get(id=response.data['id'])
+        self.assertEqual(blog.author_name, 'R. K. Shaw, S. S. Kashyap')
+        self.assertEqual(blog.authors.count(), 2)
 
     def test_numeric_id_detail_route_fallback(self):
         post = BlogPost.objects.create(

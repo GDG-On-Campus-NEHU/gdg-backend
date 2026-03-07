@@ -25,6 +25,7 @@ from .models import (
     EventTechTag,
     EventGalleryImage,
     EventResource,
+    BlogAuthor,
 )
 
 
@@ -60,12 +61,19 @@ class BlogPostAdminForm(forms.ModelForm):
         fields = '__all__'
 
 
+@admin.register(BlogAuthor)
+class BlogAuthorAdmin(admin.ModelAdmin):
+    list_display = ('name', 'website_url', 'github_url', 'linkedin_url', 'instagram_url')
+    search_fields = ('name', 'short_bio', 'github_url', 'linkedin_url', 'instagram_url', 'website_url')
+
+
 @admin.register(BlogPost)
 class BlogPostAdmin(admin.ModelAdmin):
     form = BlogPostAdminForm
     list_display = ('title', 'author_name', 'published_date')
     search_fields = ('title', 'summary', 'author_name')
-    list_filter = ('published_date', 'tags')
+    list_filter = ('published_date', 'tags', 'authors')
+    filter_horizontal = ('tags', 'authors')
 
 
 class RoadmapAdminForm(forms.ModelForm):

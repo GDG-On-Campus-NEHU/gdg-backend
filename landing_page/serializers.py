@@ -10,6 +10,7 @@ from .models import (
     Event,
     Speaker,
     EventResource,
+    BlogAuthor,
 )
 
 
@@ -66,6 +67,21 @@ class ProjectDetailSerializer(ProjectBaseSerializer):
         fields = ProjectBaseSerializer.Meta.fields + ['content']
 
 
+class BlogAuthorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BlogAuthor
+        fields = [
+            'id',
+            'name',
+            'photo_url',
+            'short_bio',
+            'github_url',
+            'linkedin_url',
+            'instagram_url',
+            'website_url',
+        ]
+
+
 class BlogPostBaseSerializer(TaggableSerializerMixin, serializers.ModelSerializer):
     tags = BasicTagSerializer(many=True, read_only=True)
     tag_ids = serializers.PrimaryKeyRelatedField(
@@ -75,10 +91,19 @@ class BlogPostBaseSerializer(TaggableSerializerMixin, serializers.ModelSerialize
         source='tags',
         required=False,
     )
+    author_ids = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=BlogAuthor.objects.all(),
+        write_only=True,
+        source='authors',
+        required=False,
+    )
 
     class Meta:
         model = BlogPost
-        fields = ['id', 'slug', 'title', 'summary', 'image_url', 'tags', 'tag_ids', 'author_name', 'published_date']
+        fields = [
+            'id', 'slug', 'title', 'summary', 'image_url', 'tags', 'tag_ids', 'author_name', 'published_date', 'author_ids'
+        ]
 
 
 class BlogPostListSerializer(BlogPostBaseSerializer):
@@ -86,8 +111,10 @@ class BlogPostListSerializer(BlogPostBaseSerializer):
 
 
 class BlogPostDetailSerializer(BlogPostBaseSerializer):
+    authors = BlogAuthorSerializer(many=True, read_only=True)
+
     class Meta(BlogPostBaseSerializer.Meta):
-        fields = BlogPostBaseSerializer.Meta.fields + ['content']
+        fields = BlogPostBaseSerializer.Meta.fields + ['content', 'authors']
 
 
 class TeamMemberBaseSerializer(TaggableSerializerMixin, serializers.ModelSerializer):
